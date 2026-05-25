@@ -16,3 +16,48 @@ This app is intended to replace a working macOS Numbers spreadsheet, not become 
 ## Repo Rules
 
 Track source code, schema, migrations, formulas, docs, and safe sample config. Do not track `.env` files, Plaid credentials, access tokens, CSV exports, Numbers files, local databases, backups, or real financial data.
+
+## Local Development
+
+```bash
+npm install
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+The app runs at `http://localhost:3000`.
+
+The local SQLite database is ignored by git at:
+
+```txt
+data/net-worth.sqlite
+```
+
+Useful checks:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm audit --audit-level=moderate
+```
+
+Database commands:
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run db:studio
+```
+
+Current scaffold routes:
+
+- `/`
+- `/accounts`
+- `/contributions`
+- `/snapshots`
+- `/annual-returns`
+- `/charts`

@@ -2,7 +2,7 @@
 
 ## Phase 0: Repo And Planning
 
-Status: in progress.
+Status: complete.
 
 - Initialize git repo.
 - Add docs for handoff, product spec, architecture, security, and build plan.
@@ -12,6 +12,8 @@ Status: in progress.
 ## Phase 1: App Shell With Mock Data
 
 Goal: make the app shape visible without Plaid risk.
+
+Status: in progress.
 
 - Scaffold a Next.js app.
 - Add basic styling and responsive layout.
@@ -25,14 +27,20 @@ Goal: make the app shape visible without Plaid risk.
 - Add fake seed/mock data matching the spreadsheet shape.
 - Implement derived metrics with tests where practical.
 
+Current scaffold includes mocked routes and derived calculations. Automated unit tests have not been added yet.
+
 ## Phase 2: Persistence
 
 Goal: store real structure locally without importing sensitive data into git.
+
+Status: in progress.
 
 - Add database and migrations.
 - Add entities for accounts, balance fetches, snapshots, snapshot balances, contributions, and adjustments.
 - Add local seed command with fake data.
 - Add export/backup command.
+
+Current local persistence uses Prisma with SQLite at ignored path `data/net-worth.sqlite`. The app reads dashboard data from SQLite. Write workflows and export/backup are not implemented yet.
 
 ## Phase 3: Spreadsheet Import
 

@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  brokerage
+  retirement
+  cash
+  hsa
+  real_estate
+  alternative
+}
+
+enum BalanceSource {
+  plaid
+  mock_plaid
+  manual
+  import
+}
+
+enum BalanceSyncStatus {
+  running
+  succeeded
+  failed
+}
+
+enum SnapshotKind {
+  manual
+  plaid_sync
+  year_end
+  import
+}
+
+enum ContributionKind {
+  contribution
+  withdrawal
+  import_adjustment
+}
+
+model Account {
+  id                     String   @id
+  name                   String
+  institution            String
+  subaccountName         String?
+  type                   AccountType
+  subtype                String
+  plaidAccountId         String?  @unique
+  isLiquid               Boolean  @default(true)
+  isActive               Boolean  @default(true)
+  displayOrder           Int      @default(0)
+  color                  String
+  manualBalanceCents     BigInt?
+  manualBalanceUpdatedAt DateTime?
+  notes                  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  balanceFetches    BalanceFetch[]
+  snapshotBalances  SnapshotBalance[]
+  contributions     Contribution[]
+  manualAdjustments ManualAdjustment[]
+}
+
+model BalanceSyncRun {
+  id         String            @id
+  source     BalanceSource
+  status     BalanceSyncStatus
+  startedAt  DateTime
+  finishedAt DateTime?
+  error      String?
+  createdAt  DateTime          @default(now())
+
+  balanceFetches BalanceFetch[]
+
+  @@index([source, startedAt])
+}
+
+model BalanceFetch {
+  id                    String        @id
+  accountId             String
+  syncRunId             String?
+  balanceCents          BigInt
+  availableBalanceCents BigInt?
+  currency              String        @default("USD")
+  source                BalanceSource
+  fetchedAt             DateTime
+  createdAt             DateTime      @default(now())
+
+  account Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  syncRun BalanceSyncRun? @relation(fields: [syncRunId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, fetchedAt])
+  @@index([syncRunId])
+}
+
+model Snapshot {
+  id                 String       @id
+  snapshotDate       DateTime
+  label              String
+  kind               SnapshotKind
+  yearEndForYear     Int?         @unique
+  investedTotalCents BigInt
+  netWorthTotalCents BigInt
+  growthTotalCents   BigInt
+  notes              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  balances SnapshotBalance[]
+
+  @@index([snapshotDate])
+}
+
+model SnapshotBalance {
+  id                     String @id
+  snapshotId             String
+  accountId              String
+  balanceCents           BigInt
+  investedCents          BigInt?
+  growthCents            BigInt?
+  growthPercentBasisPts  Int?
+
+  snapshot Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, accountId])
+  @@index([accountId])
+}
+
+model Contribution {
+  id               String   @id
+  accountId        String
+  contributionDate DateTime
+  amountCents      BigInt
+  kind             ContributionKind @default(contribution)
+  note             String?
+  source           String           @default("manual")
+  yearBucket       Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, contributionDate])
+}
+
+model ManualAdjustment {
+  id             String   @id
+  accountId      String
+  adjustmentDate DateTime
+  amountCents    BigInt
+  reason         String
+  createdAt      DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, adjustmentDate])
+}
+
+model ProjectionModel {
+  id                     String   @id
+  name                   String
+  coefficient            Float
+  exponentialCoefficient Float
+  exponent               Float
+  targetAge              Int
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}

@@ -47,8 +47,23 @@ Suggested entities:
 - `is_active`
 - `display_order`
 - `color`
+- `manual_balance`
+- `manual_balance_updated_at`
+- `notes`
 - `created_at`
 - `updated_at`
+
+### BalanceSyncRun
+
+Groups balance fetches from a Plaid/manual/import run:
+
+- `id`
+- `source`
+- `status`
+- `started_at`
+- `finished_at`
+- `error`
+- `created_at`
 
 ### BalanceFetch
 
@@ -56,6 +71,7 @@ Latest and historical fetched balances from Plaid:
 
 - `id`
 - `account_id`
+- `sync_run_id`
 - `balance`
 - `available_balance`
 - `currency`
@@ -71,9 +87,11 @@ Historical record chosen by the user:
 - `snapshot_date`
 - `label`
 - `kind`
+- `year_end_for_year`
 - `invested_total`
 - `net_worth_total`
 - `growth_total`
+- `notes`
 - `created_at`
 - `updated_at`
 
@@ -85,6 +103,9 @@ Per-account balance inside a snapshot:
 - `snapshot_id`
 - `account_id`
 - `balance`
+- `invested`
+- `growth`
+- `growth_percent_basis_points`
 
 ### Contribution
 
@@ -94,7 +115,10 @@ Invested capital entry:
 - `account_id`
 - `contribution_date`
 - `amount`
+- `kind`
 - `note`
+- `source`
+- `year_bucket`
 - `created_at`
 - `updated_at`
 
@@ -126,10 +150,12 @@ Optional future support for the spreadsheet's model/projection line:
 
 - Latest balance comes from most recent `BalanceFetch` or manual override.
 - Snapshot balances are copied values and should not drift.
+- Snapshot account rows can store copied invested/growth values so imported spreadsheet history does not have to be perfectly reconstructable from granular contribution rows.
 - Total invested is derived from contributions, with any explicit historical adjustments imported from the spreadsheet.
 - Growth dollars = net worth - invested capital, scoped by date/account/year as appropriate.
 - Growth percent should match the spreadsheet first, then be improved only with explicit approval.
 - Year-end balance should come from an official Dec 31 snapshot or a manual year-end override.
+- `Snapshot.year_end_for_year` should be unique so only one snapshot is the official record for a year.
 
 ## Plaid Flow
 

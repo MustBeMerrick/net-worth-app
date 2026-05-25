@@ -6,7 +6,9 @@ This repo is for a private net worth app owned by Marc. A fresh Codex session sh
 
 - Repo path: `/Users/marc/git/net-worth-app`
 - Purpose: replace a macOS Numbers spreadsheet with a private web/PWA app.
-- Current files are mostly planning docs; no app framework has been scaffolded yet.
+- A Next.js app shell has been scaffolded with mocked dashboard, account, contribution, snapshot, annual return, and chart routes.
+- Local SQLite persistence has been added through Prisma. The local database file is ignored at `data/net-worth.sqlite`.
+- Auth, spreadsheet import, and Plaid integration have not been implemented yet.
 - Existing spreadsheet is integrated with Plaid through a Python script, invoked today by an AppleScript/hot-key wrapper.
 - The Plaid flow should be reusable outside Numbers, but the script itself has not been copied into this repo yet.
 - The user owns `www.mustbemerrick.com` and may host the app under a subdomain such as `app.mustbemerrick.com` or `networth.mustbemerrick.com`.
@@ -61,15 +63,23 @@ Unless the user asks otherwise:
 - Require real auth before any hosted deployment.
 - Prefer private GitHub repo.
 
-## Suggested First Coding Task
+## Local Database
 
-Scaffold the web app and persistence layer, then implement a mocked dashboard before integrating Plaid:
+- Prisma schema: `prisma/schema.prisma`
+- Local DB URL: `DATABASE_URL=file:../data/net-worth.sqlite`
+- Local DB file: `/Users/marc/git/net-worth-app/data/net-worth.sqlite`
+- Seed source: fake data in `lib/mock-data.ts`
+- Seed command: `npm run db:seed`
 
-1. Create Next.js app structure in this repo.
-2. Add `.gitignore` and `.env.example` if missing.
-3. Add database schema for accounts, balance fetches, snapshots, snapshot balances, contributions, and manual adjustments.
-4. Build static/mock Dashboard, Accounts, Snapshots, Annual Returns, and Charts routes.
-5. Add seed/mock data matching the spreadsheet shape.
+## Suggested Next Coding Task
+
+Replace read-only database views with explicit write workflows:
+
+1. Add server actions or API routes for `Add Contribution`.
+2. Add `Take Snapshot` using latest balance fetch rows.
+3. Add `Mark Snapshot as Year-End`.
+4. Add account classification editing.
+5. Add backup/export from SQLite data.
 6. Add Plaid integration only after the app shell and data model are clear.
 
 Read the docs in `docs/` before making architecture changes.
