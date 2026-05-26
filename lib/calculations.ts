@@ -36,6 +36,15 @@ export type AccountWithBalance = Account & {
   growthPercent: number;
 };
 
+export type InstitutionBalanceGroup = {
+  institution: string;
+  accounts: AccountWithBalance[];
+  totalBalance: number;
+  totalInvested: number;
+  totalGrowth: number;
+  hasMultipleAccounts: boolean;
+};
+
 export type DashboardSummary = {
   netWorthTotal: number;
   investedTotal: number;
@@ -89,6 +98,16 @@ export function dateLabel(value: string): string {
   }).format(new Date(value));
 }
 
+export function dateTimeLabel(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
 export function getLatestBalanceFetches(fetches: BalanceFetch[] = balanceFetches): Map<string, BalanceFetch> {
   return fetches.reduce((latestByAccount, fetch) => {
     const current = latestByAccount.get(fetch.accountId);
@@ -130,6 +149,30 @@ export function getAccountsWithBalances(data: FinanceData = mockFinanceData): Ac
         growthPercent
       };
     });
+}
+
+export function getInstitutionBalanceGroups(accountRows: AccountWithBalance[]): InstitutionBalanceGroup[] {
+  const groups = accountRows.reduce((groupsByInstitution, account) => {
+    const current = groupsByInstitution.get(account.institution) ?? [];
+    groupsByInstitution.set(account.institution, [...current, account]);
+    return groupsByInstitution;
+  }, new Map<string, AccountWithBalance[]>());
+
+  return Array.from(groups.entries()).map(([institution, groupedAccounts]) => {
+    const sortedAccounts = groupedAccounts.slice().sort((a, b) => a.displayOrder - b.displayOrder);
+    return {
+      institution,
+      accounts: sortedAccounts,
+      totalBalance: sortedAccounts.reduce((total, account) => total + account.latestBalance, 0),
+      totalInvested: sortedAccounts.reduce((total, account) => total + account.investedTotal, 0),
+      totalGrowth: sortedAccounts.reduce((total, account) => total + account.growthDollars, 0),
+      hasMultipleAccounts: sortedAccounts.length > 1
+    };
+  });
+}
+
+export function accountLabel(account: Account): string {
+  return account.subaccountName ? `${account.institution} - ${account.subaccountName}` : account.institution;
 }
 
 export function getDashboardSummary(
@@ -183,7 +226,7 @@ export function basisPointsToPercent(value: number): number {
 }
 
 export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): AnnualReturnBlock[] {
-  const accountById = new Map(data.accounts.map((account) => [account.id, account]));
+  const activeAccounts = data.accounts.filter((a) => a.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
 
   return data.snapshots
     .filter((snapshot) => snapshot.kind === "year_end" || snapshot.yearEndForYear !== undefined)
@@ -194,35 +237,27 @@ export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): Annu
     })
     .map((snapshot) => {
       const year = snapshot.yearEndForYear ?? new Date(snapshot.snapshotDate).getFullYear();
-      const rows = data.snapshotBalances
-        .filter((balance) => balance.snapshotId === snapshot.id)
-        .reduce<AnnualAccountReturn[]>((annualRows, balance) => {
-          const account = accountById.get(balance.accountId);
-          if (!account) {
-            return annualRows;
-          }
+      const balanceByAccountId = new Map(
+        data.snapshotBalances
+          .filter((b) => b.snapshotId === snapshot.id)
+          .map((b) => [b.accountId, b])
+      );
 
-          const investedTotal = balance.invested ?? 0;
-          const growthDollars = balance.growth ?? balance.balance - investedTotal;
-          const growthPercent =
-            balance.growthPercentBasisPts === undefined
-              ? investedTotal === 0
-                ? undefined
-                : (growthDollars / investedTotal) * 100
-              : basisPointsToPercent(balance.growthPercentBasisPts);
-
-          return [
-            ...annualRows,
-            {
-              account,
-              investedTotal,
-              growthPercent,
-              growthDollars,
-              dec31Balance: balance.balance
-            }
-          ];
-        }, [])
-        .sort((a, b) => a.account.displayOrder - b.account.displayOrder);
+      const rows: AnnualAccountReturn[] = activeAccounts.map((account) => {
+        const balance = balanceByAccountId.get(account.id);
+        if (!balance) {
+          return { account, investedTotal: 0, growthPercent: undefined, growthDollars: 0, dec31Balance: 0 };
+        }
+        const investedTotal = balance.invested ?? 0;
+        const growthDollars = balance.growth ?? balance.balance - investedTotal;
+        const growthPercent =
+          balance.growthPercentBasisPts === undefined
+            ? investedTotal === 0
+              ? undefined
+              : (growthDollars / investedTotal) * 100
+            : basisPointsToPercent(balance.growthPercentBasisPts);
+        return { account, investedTotal, growthPercent, growthDollars, dec31Balance: balance.balance };
+      });
 
       return {
         year,

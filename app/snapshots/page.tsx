@@ -1,6 +1,7 @@
 import { ActionButton } from "@/components/ActionButton";
 import { currency, dateLabel, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
+import { deleteSnapshot, takeSnapshot } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,9 @@ export default async function SnapshotsPage() {
           <h1>Historical Records</h1>
         </div>
         <div className="action-row">
-          <ActionButton tone="primary">Take Snapshot</ActionButton>
+          <form action={takeSnapshot}>
+            <ActionButton tone="primary" type="submit">Take Snapshot</ActionButton>
+          </form>
           <ActionButton>Mark Snapshot as Year-End</ActionButton>
         </div>
       </header>
@@ -32,6 +35,7 @@ export default async function SnapshotsPage() {
                 <th>Invested</th>
                 <th>Net Worth</th>
                 <th>Growth</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -49,6 +53,11 @@ export default async function SnapshotsPage() {
                   <td>
                     {currency(snapshot.growthTotal)}
                     <small>{percent((snapshot.growthTotal / snapshot.investedTotal) * 100)}</small>
+                  </td>
+                  <td>
+                    <form action={deleteSnapshot.bind(null, snapshot.id)}>
+                      <button className="delete-button" type="submit">Delete</button>
+                    </form>
                   </td>
                 </tr>
               ))}

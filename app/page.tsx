@@ -1,21 +1,26 @@
+import { Fragment } from "react";
 import { ActionButton } from "@/components/ActionButton";
 import { AllocationChart } from "@/components/AllocationChart";
 import { MetricCard } from "@/components/MetricCard";
 import { TrendChart } from "@/components/TrendChart";
 import {
   currency,
-  dateLabel,
+  dateTimeLabel,
   getAccountsWithBalances,
   getDashboardSummary,
+  getInstitutionBalanceGroups,
   percent
 } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
+import { takeSnapshot } from "@/app/snapshots/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const data = await getFinanceData();
   const accountRows = getAccountsWithBalances(data);
+  const liquidGroups = getInstitutionBalanceGroups(accountRows.filter((a) => a.isLiquid));
+  const nonLiquidGroups = getInstitutionBalanceGroups(accountRows.filter((a) => !a.isLiquid));
   const summary = getDashboardSummary(data, accountRows);
 
   return (
@@ -26,8 +31,15 @@ export default async function DashboardPage() {
           <h1>Net Worth Command Center</h1>
         </div>
         <div className="action-row">
-          <ActionButton tone="primary">Sync Plaid Balances</ActionButton>
-          <ActionButton>Take Snapshot</ActionButton>
+          <div className="action-button-stack">
+            <ActionButton tone="primary">Sync Plaid Balances</ActionButton>
+            {summary.lastPlaidSync ? (
+              <small className="action-subtext">synced: {dateTimeLabel(summary.lastPlaidSync)}</small>
+            ) : null}
+          </div>
+          <form action={takeSnapshot}>
+            <ActionButton type="submit">Take Snapshot</ActionButton>
+          </form>
           <ActionButton>Add Contribution</ActionButton>
           <ActionButton>Export Backup</ActionButton>
         </div>
@@ -52,50 +64,97 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <section className="status-strip">
-        <span>Last Plaid sync: {summary.lastPlaidSync ? dateLabel(summary.lastPlaidSync) : "Never"}</span>
-        <span>
-          Last snapshot:{" "}
-          {summary.lastSnapshot
-            ? `${summary.lastSnapshot.label} on ${dateLabel(summary.lastSnapshot.snapshotDate)}`
-            : "None"}
-        </span>
-      </section>
-
       <div className="two-column">
-        <section className="panel">
+        <section className="panel class-panel">
           <div className="section-heading">
             <div>
-              <p>Balances</p>
-              <h2>Current Accounts</h2>
+              <p>Liquid</p>
+              <h2>Cash &amp; Taxable</h2>
             </div>
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="compact">
               <thead>
                 <tr>
+                  <th>Institution</th>
                   <th>Account</th>
-                  <th>Class</th>
                   <th>Balance</th>
-                  <th>Growth</th>
                 </tr>
               </thead>
               <tbody>
-                {accountRows.map((account) => (
-                  <tr key={account.id}>
-                    <td>
-                      <strong>{account.name}</strong>
-                      <small>{account.subaccountName ?? account.institution}</small>
-                    </td>
-                    <td>{account.isLiquid ? "Liquid" : "Non-liquid"}</td>
-                    <td>{currency(account.latestBalance)}</td>
-                    <td>{currency(account.growthDollars)}</td>
-                  </tr>
+                {liquidGroups.map((group) => (
+                  <Fragment key={group.institution}>
+                    {group.accounts.map((account, index) => (
+                      <tr key={account.id}>
+                        <td><strong>{index === 0 ? group.institution : ""}</strong></td>
+                        <td>{account.subaccountName ?? account.name}</td>
+                        <td>{currency(account.latestBalance)}</td>
+                      </tr>
+                    ))}
+                    {group.hasMultipleAccounts ? (
+                      <tr className="subtotal-row">
+                        <td><strong>{group.institution} Total</strong></td>
+                        <td />
+                        <td>{currency(group.totalBalance)}</td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
+          <div className="class-total">
+            <strong>Total</strong>
+            <span />
+            <strong>{currency(liquidGroups.reduce((s, g) => s + g.totalBalance, 0))}</strong>
+          </div>
         </section>
+
+        <section className="panel class-panel">
+          <div className="section-heading">
+            <div>
+              <p>Non-Liquid</p>
+              <h2>Retirement &amp; Locked</h2>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table className="compact">
+              <thead>
+                <tr>
+                  <th>Institution</th>
+                  <th>Account</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nonLiquidGroups.map((group) => (
+                  <Fragment key={group.institution}>
+                    {group.accounts.map((account, index) => (
+                      <tr key={account.id}>
+                        <td><strong>{index === 0 ? group.institution : ""}</strong></td>
+                        <td>{account.subaccountName ?? account.name}</td>
+                        <td>{currency(account.latestBalance)}</td>
+                      </tr>
+                    ))}
+                    {group.hasMultipleAccounts ? (
+                      <tr className="subtotal-row">
+                        <td><strong>{group.institution} Total</strong></td>
+                        <td />
+                        <td>{currency(group.totalBalance)}</td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="class-total">
+            <strong>Total</strong>
+            <span />
+            <strong>{currency(nonLiquidGroups.reduce((s, g) => s + g.totalBalance, 0))}</strong>
+          </div>
+        </section>
+
         <AllocationChart accounts={accountRows} />
       </div>
 

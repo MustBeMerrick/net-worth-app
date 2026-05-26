@@ -11,7 +11,9 @@ export async function getFinanceData(): Promise<FinanceData> {
     await Promise.all([
       prisma.account.findMany({ orderBy: { displayOrder: "asc" } }),
       prisma.balanceFetch.findMany({ orderBy: { fetchedAt: "desc" } }),
-      prisma.contribution.findMany({ orderBy: { contributionDate: "desc" } }),
+      prisma.contribution.findMany({
+        orderBy: [{ contributionDate: "desc" }, { createdAt: "desc" }]
+      }),
       prisma.snapshot.findMany({ orderBy: { snapshotDate: "desc" } }),
       prisma.snapshotBalance.findMany()
     ]);
@@ -46,6 +48,7 @@ export async function getFinanceData(): Promise<FinanceData> {
     accountId: contribution.accountId,
     contributionDate: contribution.contributionDate.toISOString(),
     amount: dollars(contribution.amountCents),
+    createdAt: contribution.createdAt.toISOString(),
     kind: contribution.kind,
     note: contribution.note ?? undefined,
     source: contribution.source

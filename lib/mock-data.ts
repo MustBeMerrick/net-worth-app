@@ -37,6 +37,7 @@ export type Contribution = {
   accountId: string;
   contributionDate: string;
   amount: number;
+  createdAt?: string;
   kind?: ContributionKind;
   note?: string;
   source?: string;
@@ -67,17 +68,30 @@ export type SnapshotBalance = {
 
 export const accounts: Account[] = [
   {
-    id: "betterment-taxable",
-    name: "Betterment",
+    id: "betterment-extra-money",
+    name: "Extra Money",
     institution: "Betterment",
-    subaccountName: "Taxable",
-    type: "brokerage",
-    subtype: "taxable",
+    subaccountName: "Extra Money",
+    type: "cash",
+    subtype: "cash reserve",
     isLiquid: true,
     isActive: true,
     displayOrder: 1,
-    color: "#1d766f",
-    plaidAccountId: "mock-betterment-taxable"
+    color: "#4472C4",
+    plaidAccountId: "mock-betterment-extra-money"
+  },
+  {
+    id: "betterment-ira",
+    name: "IRA",
+    institution: "Betterment",
+    subaccountName: "IRA",
+    type: "retirement",
+    subtype: "traditional ira",
+    isLiquid: false,
+    isActive: true,
+    displayOrder: 2,
+    color: "#4472C4",
+    plaidAccountId: "mock-betterment-ira"
   },
   {
     id: "wealthfront-cash",
@@ -88,8 +102,8 @@ export const accounts: Account[] = [
     subtype: "cash management",
     isLiquid: true,
     isActive: true,
-    displayOrder: 2,
-    color: "#5572b8",
+    displayOrder: 3,
+    color: "#7030A0",
     plaidAccountId: "mock-wealthfront-cash"
   },
   {
@@ -101,8 +115,8 @@ export const accounts: Account[] = [
     subtype: "401k",
     isLiquid: false,
     isActive: true,
-    displayOrder: 3,
-    color: "#9466a8",
+    displayOrder: 4,
+    color: "#00B050",
     plaidAccountId: "mock-fidelity-401k"
   },
   {
@@ -112,24 +126,50 @@ export const accounts: Account[] = [
     subaccountName: "Roth IRA",
     type: "retirement",
     subtype: "roth ira",
-    isLiquid: false,
+    isLiquid: true,
     isActive: true,
-    displayOrder: 4,
-    color: "#c25746",
+    displayOrder: 5,
+    color: "#FF0000",
     plaidAccountId: "mock-vanguard-roth"
   },
   {
     id: "robinhood-individual",
-    name: "Robinhood",
+    name: "Individual",
     institution: "Robinhood",
     subaccountName: "Individual",
     type: "brokerage",
     subtype: "taxable",
     isLiquid: true,
     isActive: true,
-    displayOrder: 5,
-    color: "#d39f33",
+    displayOrder: 6,
+    color: "#92D050",
     plaidAccountId: "mock-robinhood-individual"
+  },
+  {
+    id: "robinhood-roth",
+    name: "Roth",
+    institution: "Robinhood",
+    subaccountName: "Roth",
+    type: "retirement",
+    subtype: "roth ira",
+    isLiquid: false,
+    isActive: true,
+    displayOrder: 7,
+    color: "#92D050",
+    plaidAccountId: "mock-robinhood-roth"
+  },
+  {
+    id: "robinhood-ira",
+    name: "IRA",
+    institution: "Robinhood",
+    subaccountName: "IRA",
+    type: "retirement",
+    subtype: "traditional ira",
+    isLiquid: false,
+    isActive: true,
+    displayOrder: 8,
+    color: "#92D050",
+    plaidAccountId: "mock-robinhood-ira"
   },
   {
     id: "fundrise",
@@ -139,29 +179,61 @@ export const accounts: Account[] = [
     subtype: "real estate",
     isLiquid: false,
     isActive: true,
-    displayOrder: 6,
-    color: "#887056"
+    displayOrder: 9,
+    color: "#ED7D31"
   },
   {
     id: "hsa",
     name: "HSA",
-    institution: "HealthEquity",
+    institution: "Navia",
     type: "hsa",
     subtype: "health savings",
     isLiquid: false,
     isActive: true,
-    displayOrder: 7,
-    color: "#4f8b54",
+    displayOrder: 12,
+    color: "#FF00FF",
     plaidAccountId: "mock-hsa"
+  },
+  {
+    id: "securian",
+    name: "Individual",
+    institution: "Securian",
+    type: "retirement",
+    subtype: "life insurance",
+    isLiquid: false,
+    isActive: true,
+    displayOrder: 11,
+    color: "#FFC000",
+    plaidAccountId: "mock-securian"
+  },
+  {
+    id: "lpl-individual",
+    name: "Individual",
+    institution: "LPL",
+    type: "brokerage",
+    subtype: "individual",
+    isLiquid: true,
+    isActive: true,
+    displayOrder: 10,
+    color: "#00B0F0",
+    plaidAccountId: "mock-lpl-individual"
   }
 ];
 
 export const balanceFetches: BalanceFetch[] = [
   {
-    id: "fetch-betterment-taxable-2026-05-25",
-    accountId: "betterment-taxable",
-    balance: 146280,
-    availableBalance: 146280,
+    id: "fetch-betterment-extra-money-2026-05-25",
+    accountId: "betterment-extra-money",
+    balance: 129826,
+    availableBalance: 129826,
+    currency: "USD",
+    source: "mock_plaid",
+    fetchedAt: "2026-05-25T14:20:00-07:00"
+  },
+  {
+    id: "fetch-betterment-ira-2026-05-25",
+    accountId: "betterment-ira",
+    balance: 16454,
     currency: "USD",
     source: "mock_plaid",
     fetchedAt: "2026-05-25T14:20:00-07:00"
@@ -194,8 +266,24 @@ export const balanceFetches: BalanceFetch[] = [
   {
     id: "fetch-robinhood-individual-2026-05-25",
     accountId: "robinhood-individual",
-    balance: 22410,
-    availableBalance: 22410,
+    balance: 12310,
+    availableBalance: 12310,
+    currency: "USD",
+    source: "mock_plaid",
+    fetchedAt: "2026-05-25T14:20:00-07:00"
+  },
+  {
+    id: "fetch-robinhood-roth-2026-05-25",
+    accountId: "robinhood-roth",
+    balance: 6100,
+    currency: "USD",
+    source: "mock_plaid",
+    fetchedAt: "2026-05-25T14:20:00-07:00"
+  },
+  {
+    id: "fetch-robinhood-ira-2026-05-25",
+    accountId: "robinhood-ira",
+    balance: 4000,
     currency: "USD",
     source: "mock_plaid",
     fetchedAt: "2026-05-25T14:20:00-07:00"
@@ -215,13 +303,29 @@ export const balanceFetches: BalanceFetch[] = [
     currency: "USD",
     source: "mock_plaid",
     fetchedAt: "2026-05-25T14:20:00-07:00"
+  },
+  {
+    id: "bf-securian-1",
+    accountId: "securian",
+    balance: 38475,
+    currency: "USD",
+    source: "mock_plaid",
+    fetchedAt: "2026-05-25T14:20:00-07:00"
+  },
+  {
+    id: "bf-lpl-individual-1",
+    accountId: "lpl-individual",
+    balance: 62345,
+    currency: "USD",
+    source: "mock_plaid",
+    fetchedAt: "2026-05-25T14:20:00-07:00"
   }
 ];
 
 export const contributions: Contribution[] = [
   {
     id: "contrib-2024-01-betterment",
-    accountId: "betterment-taxable",
+    accountId: "betterment-extra-money",
     contributionDate: "2024-01-15",
     amount: 12000,
     note: "Monthly taxable contributions"
@@ -249,7 +353,7 @@ export const contributions: Contribution[] = [
   },
   {
     id: "contrib-2026-01-betterment",
-    accountId: "betterment-taxable",
+    accountId: "betterment-extra-money",
     contributionDate: "2026-01-12",
     amount: 15000,
     note: "Taxable savings"
@@ -312,11 +416,14 @@ export const snapshots: Snapshot[] = [
 ];
 
 export const snapshotBalances: SnapshotBalance[] = [
-  { id: "sb-2026-betterment", snapshotId: "snapshot-2026-05-25", accountId: "betterment-taxable", balance: 146280 },
+  { id: "sb-2026-betterment-extra-money", snapshotId: "snapshot-2026-05-25", accountId: "betterment-extra-money", balance: 129826 },
+  { id: "sb-2026-betterment-ira", snapshotId: "snapshot-2026-05-25", accountId: "betterment-ira", balance: 16454 },
   { id: "sb-2026-wealthfront", snapshotId: "snapshot-2026-05-25", accountId: "wealthfront-cash", balance: 38440 },
   { id: "sb-2026-fidelity", snapshotId: "snapshot-2026-05-25", accountId: "fidelity-401k", balance: 231900 },
   { id: "sb-2026-vanguard", snapshotId: "snapshot-2026-05-25", accountId: "vanguard-roth", balance: 78550 },
-  { id: "sb-2026-robinhood", snapshotId: "snapshot-2026-05-25", accountId: "robinhood-individual", balance: 22410 },
+  { id: "sb-2026-robinhood-individual", snapshotId: "snapshot-2026-05-25", accountId: "robinhood-individual", balance: 12310 },
+  { id: "sb-2026-robinhood-roth", snapshotId: "snapshot-2026-05-25", accountId: "robinhood-roth", balance: 6100 },
+  { id: "sb-2026-robinhood-ira", snapshotId: "snapshot-2026-05-25", accountId: "robinhood-ira", balance: 4000 },
   { id: "sb-2026-fundrise", snapshotId: "snapshot-2026-05-25", accountId: "fundrise", balance: 41880 },
   { id: "sb-2026-hsa", snapshotId: "snapshot-2026-05-25", accountId: "hsa", balance: 18960 }
 ];
