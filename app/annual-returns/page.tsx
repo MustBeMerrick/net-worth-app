@@ -10,10 +10,17 @@ export default async function AnnualReturnsPage() {
   const accountRows = getAccountsWithBalances(data);
   const annualBlocks = getAnnualReturnBlocks(data);
 
-  const currentYearInvested = accountRows.reduce((s, a) => s + a.investedTotal, 0);
+  const currentYearContribsByAccount = data.contributions
+    .filter((c) => new Date(c.contributionDate).getFullYear() === CURRENT_YEAR)
+    .reduce<Record<string, number>>((acc, c) => {
+      acc[c.accountId] = (acc[c.accountId] ?? 0) + c.amount;
+      return acc;
+    }, {});
+  const currentYearInvested = Object.values(currentYearContribsByAccount).reduce((s, v) => s + v, 0);
+  const allTimeInvested = accountRows.reduce((s, a) => s + a.investedTotal, 0);
   const currentYearNetWorth = accountRows.reduce((s, a) => s + a.latestBalance, 0);
-  const currentYearGrowth = currentYearNetWorth - currentYearInvested;
-  const currentYearGrowthPercent = currentYearInvested === 0 ? 0 : (currentYearGrowth / currentYearInvested) * 100;
+  const currentYearGrowth = currentYearNetWorth - allTimeInvested;
+  const currentYearGrowthPercent = allTimeInvested === 0 ? 0 : (currentYearGrowth / allTimeInvested) * 100;
 
   return (
     <div className="page-stack">
@@ -75,20 +82,25 @@ export default async function AnnualReturnsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {accountRows.map((account) => (
+                  {accountRows.map((account) => {
+                    const acctInvested = currentYearContribsByAccount[account.id] ?? 0;
+                    const acctGrowth = account.latestBalance - account.investedTotal;
+                    const acctGrowthPercent = account.investedTotal === 0 ? 0 : (acctGrowth / account.investedTotal) * 100;
+                    return (
                     <tr key={account.id}>
                       <th scope="row">{account.institution}</th>
                       <td>{account.subaccountName ?? account.name}</td>
-                      <td className="money-cell">{currency(account.investedTotal)}</td>
-                      <td className={account.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                        {percent(account.growthPercent)}
+                      <td className="money-cell">{currency(acctInvested)}</td>
+                      <td className={acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                        {percent(acctGrowthPercent)}
                       </td>
-                      <td className={account.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                        {currency(account.growthDollars)}
+                      <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                        {currency(acctGrowth)}
                       </td>
                       <td className="money-cell">—</td>
                     </tr>
-                  ))}
+                  )})}
+
                   <tr className="annual-total-row">
                     <th scope="row">Total</th>
                     <td />

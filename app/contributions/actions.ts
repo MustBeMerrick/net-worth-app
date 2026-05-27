@@ -12,19 +12,20 @@ function fieldValue(formData: FormData, name: string): string {
 
 function parseAmountCents(value: string): bigint {
   const normalized = value.replace(/[$,\s]/g, "");
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
-    throw new Error("Amount must be a positive dollar value with up to two decimal places.");
+  const negative = normalized.startsWith("-");
+  const abs = negative ? normalized.slice(1) : normalized;
+  if (!/^\d+(\.\d{1,2})?$/.test(abs)) {
+    throw new Error("Amount must be a dollar value with up to two decimal places.");
   }
 
-  const [dollars, cents = ""] = normalized.split(".");
-  const paddedCents = cents.padEnd(2, "0");
-  const amountCents = BigInt(dollars) * BigInt(100) + BigInt(paddedCents);
+  const [dollars, cents = ""] = abs.split(".");
+  const amountCents = BigInt(dollars) * BigInt(100) + BigInt(cents.padEnd(2, "0"));
 
-  if (amountCents <= BigInt(0)) {
-    throw new Error("Amount must be greater than zero.");
+  if (amountCents === BigInt(0)) {
+    throw new Error("Amount must be non-zero.");
   }
 
-  return amountCents;
+  return negative ? -amountCents : amountCents;
 }
 
 function parseContributionDate(value: string): Date {

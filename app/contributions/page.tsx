@@ -59,7 +59,6 @@ export default async function ContributionsPage() {
             <input
               name="amount"
               type="number"
-              min="0.01"
               step="0.01"
               inputMode="decimal"
               placeholder="0.00"

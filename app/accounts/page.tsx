@@ -25,7 +25,7 @@ export default async function AccountsPage() {
       <header className="page-header">
         <div>
           <p>Accounts</p>
-          <h1>Account Classification</h1>
+          <h1>Balances</h1>
         </div>
         <div className="action-row">
           <button className="action-button action-button-primary" type="submit" form="balances-form">
