@@ -76,6 +76,18 @@ export async function addContribution(formData: FormData) {
   redirect("/contributions");
 }
 
+export async function updateContributionKind(contributionId: string, kind: "contribution" | "withdrawal") {
+  await prisma.contribution.update({
+    where: { id: contributionId },
+    data: { kind }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/accounts");
+  revalidatePath("/contributions");
+  revalidatePath("/annual-returns");
+}
+
 export async function deleteContribution(formData: FormData) {
   const contributionId = fieldValue(formData, "contributionId");
 
@@ -92,4 +104,15 @@ export async function deleteContribution(formData: FormData) {
   revalidatePath("/contributions");
   revalidatePath("/annual-returns");
   redirect("/contributions");
+}
+
+export async function deleteContributionById(contributionId: string) {
+  await prisma.contribution.delete({
+    where: { id: contributionId }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/accounts");
+  revalidatePath("/contributions");
+  revalidatePath("/annual-returns");
 }

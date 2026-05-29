@@ -119,10 +119,12 @@ export function getLatestBalanceFetches(fetches: BalanceFetch[] = balanceFetches
 }
 
 export function getInvestedByAccount(entries: Contribution[] = contributions): Map<string, number> {
-  return entries.reduce((totals, contribution) => {
-    totals.set(contribution.accountId, (totals.get(contribution.accountId) ?? 0) + contribution.amount);
-    return totals;
-  }, new Map<string, number>());
+  return entries
+    .filter((c) => c.kind !== "withdrawal")
+    .reduce((totals, contribution) => {
+      totals.set(contribution.accountId, (totals.get(contribution.accountId) ?? 0) + contribution.amount);
+      return totals;
+    }, new Map<string, number>());
 }
 
 export function getAccountsWithBalances(data: FinanceData = mockFinanceData): AccountWithBalance[] {

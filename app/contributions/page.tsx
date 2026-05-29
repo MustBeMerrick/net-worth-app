@@ -1,6 +1,7 @@
-import { accountLabel, currency, dateLabel } from "@/lib/calculations";
+import { accountLabel, currency } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
-import { addContribution, deleteContribution } from "./actions";
+import { addContribution } from "./actions";
+import { ContributionsTable } from "./ContributionsTable";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export default async function ContributionsPage() {
   const data = await getFinanceData();
   const accountById = new Map(data.accounts.map((account) => [account.id, account]));
   const rows = data.contributions;
-  const total = rows.reduce((sum, contribution) => sum + contribution.amount, 0);
+  const total = rows.filter((c) => c.kind !== "withdrawal").reduce((sum, c) => sum + c.amount, 0);
 
   return (
     <div className="page-stack">
@@ -78,43 +79,7 @@ export default async function ContributionsPage() {
       </section>
 
       <section className="panel">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Account</th>
-                <th>Amount</th>
-                <th>Note</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((contribution) => {
-                const account = accountById.get(contribution.accountId);
-                return (
-                  <tr key={contribution.id}>
-                    <td>{dateLabel(contribution.contributionDate)}</td>
-                    <td>
-                      <strong>{account?.institution ?? "Unknown"}</strong>
-                      <small>{account?.subaccountName ?? account?.name}</small>
-                    </td>
-                    <td>{currency(contribution.amount)}</td>
-                    <td>{contribution.note}</td>
-                    <td className="table-action-cell">
-                      <form action={deleteContribution}>
-                        <input type="hidden" name="contributionId" value={contribution.id} />
-                        <button className="icon-button" type="submit" aria-label="Delete contribution">
-                          Delete
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ContributionsTable rows={rows} accountById={accountById} />
       </section>
     </div>
   );
