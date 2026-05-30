@@ -52,7 +52,7 @@ export default async function DashboardPage() {
           label="Growth"
           value={currency(summary.growthTotal)}
           detail={percent(summary.growthPercent)}
-          tone="positive"
+          tone={summary.growthTotal >= 0 ? "positive" : "negative"}
         />
         <MetricCard label="Liquid" value={currency(summary.liquidTotal)} detail="Cash and taxable accounts" />
         <MetricCard label="Non-Liquid" value={currency(summary.nonLiquidTotal)} detail="Retirement and locked funds" />

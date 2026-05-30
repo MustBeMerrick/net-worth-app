@@ -83,10 +83,11 @@ export function currency(value: number): string {
   }).format(value);
 }
 
-export function percent(value: number): string {
+export function percent(value: number, fractionDigits = 3): string {
   return new Intl.NumberFormat("en-US", {
     style: "percent",
-    maximumFractionDigits: 1
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
   }).format(value / 100);
 }
 
@@ -245,20 +246,20 @@ export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): Annu
           .map((b) => [b.accountId, b])
       );
 
-      const rows: AnnualAccountReturn[] = activeAccounts.map((account) => {
+      const rows: AnnualAccountReturn[] = activeAccounts.flatMap((account) => {
         const balance = balanceByAccountId.get(account.id);
-        if (!balance) {
-          return { account, investedTotal: 0, growthPercent: undefined, growthDollars: 0, dec31Balance: 0 };
-        }
+        if (!balance) return [];
         const investedTotal = balance.invested ?? 0;
-        const growthDollars = balance.growth ?? balance.balance - investedTotal;
+        const dec31Balance = balance.balance;
+        if (investedTotal === 0 && dec31Balance === 0) return [];
+        const growthDollars = balance.growth ?? dec31Balance - investedTotal;
         const growthPercent =
           balance.growthPercentBasisPts === undefined
             ? investedTotal === 0
               ? undefined
               : (growthDollars / investedTotal) * 100
             : basisPointsToPercent(balance.growthPercentBasisPts);
-        return { account, investedTotal, growthPercent, growthDollars, dec31Balance: balance.balance };
+        return [{ account, investedTotal, growthPercent, growthDollars, dec31Balance }];
       });
 
       return {

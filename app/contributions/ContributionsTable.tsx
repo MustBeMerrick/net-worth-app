@@ -20,11 +20,27 @@ type PendingDelete = {
 };
 
 export function ContributionsTable({ rows, accountById }: Props) {
+  const [filterAccountId, setFilterAccountId] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [rowLeavingId, setRowLeavingId] = useState<string | null>(null);
   const [isToastLeaving, setIsToastLeaving] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Derive filter options from full row set
+  const accountOptions = Array.from(
+    new Map(
+      rows
+        .map((r) => accountById.get(r.accountId))
+        .filter((a): a is Account => a !== undefined)
+        .map((a) => [a.id, a])
+    ).values()
+  ).sort((a, b) => a.institution.localeCompare(b.institution));
+
+  const yearOptions = Array.from(
+    new Set(rows.map((r) => new Date(r.contributionDate).getFullYear()))
+  ).sort((a, b) => b - a);
 
   function startToastExit(onDone: () => void) {
     setIsToastLeaving(true);
@@ -37,7 +53,6 @@ export function ContributionsTable({ rows, accountById }: Props) {
   }
 
   function scheduleDelete(id: string, label: string) {
-    // Commit any already-pending delete immediately
     if (deleteTimerRef.current) {
       clearTimeout(deleteTimerRef.current);
       deleteTimerRef.current = null;
@@ -48,7 +63,6 @@ export function ContributionsTable({ rows, accountById }: Props) {
       exitTimerRef.current = null;
     }
 
-    // Animate the row out, then show toast and start the undo window
     setRowLeavingId(id);
     setPendingDelete({ id, label });
     setIsToastLeaving(false);
@@ -68,8 +82,18 @@ export function ContributionsTable({ rows, accountById }: Props) {
     startToastExit(() => {});
   }
 
-  // Keep the row in the DOM while it's animating out; hide it after
-  const visibleRows = rows.filter((r) => r.id !== pendingDelete?.id || r.id === rowLeavingId);
+  const visibleRows = rows.filter((r) => {
+    if (r.id === pendingDelete?.id && r.id !== rowLeavingId) return false;
+    if (filterAccountId !== "all" && r.accountId !== filterAccountId) return false;
+    if (filterYear !== "all" && new Date(r.contributionDate).getFullYear() !== Number(filterYear)) return false;
+    return true;
+  });
+
+  const filteredTotal = visibleRows
+    .filter((r) => r.id !== rowLeavingId && r.kind !== "withdrawal")
+    .reduce((sum, r) => sum + r.amount, 0);
+
+  const isFiltered = filterAccountId !== "all" || filterYear !== "all";
 
   return (
     <>
@@ -79,6 +103,45 @@ export function ContributionsTable({ rows, accountById }: Props) {
           <button className="undo-toast-button" onClick={handleUndo}>Undo</button>
         </div>
       )}
+
+      <div className="table-filters">
+        <select
+          value={filterAccountId}
+          onChange={(e) => setFilterAccountId(e.target.value)}
+          aria-label="Filter by account"
+        >
+          <option value="all">All accounts</option>
+          {accountOptions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.subaccountName ? `${a.institution} – ${a.subaccountName}` : a.institution}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          aria-label="Filter by year"
+        >
+          <option value="all">All years</option>
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        {isFiltered && (
+          <span className="filter-total">{currency(filteredTotal)}</span>
+        )}
+
+        {isFiltered && (
+          <button
+            className="filter-clear"
+            onClick={() => { setFilterAccountId("all"); setFilterYear("all"); }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
 
       <div className="table-wrap">
         <table>
@@ -94,7 +157,14 @@ export function ContributionsTable({ rows, accountById }: Props) {
           <tbody>
             {visibleRows.map((contribution) => {
               const account = accountById.get(contribution.accountId);
-              const label = `${dateLabel(contribution.contributionDate)} · ${currency(contribution.amount)}`;
+              const accountName = account
+                ? account.subaccountName
+                  ? `${account.institution} – ${account.subaccountName}`
+                  : account.institution
+                : "Unknown";
+              const d = new Date(contribution.contributionDate);
+              const mmddyyyy = `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}/${d.getUTCFullYear()}`;
+              const label = `${mmddyyyy} · ${accountName} · ${currency(contribution.amount)}`;
               return (
                 <tr key={contribution.id} className={contribution.id === rowLeavingId ? "row-leaving" : undefined}>
                   <td>{dateLabel(contribution.contributionDate)}</td>
