@@ -28,6 +28,7 @@ except ImportError:
 DATE_RE = re.compile(
     r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{4}$", re.I
 )
+TICKER_RE = re.compile(r"^[A-Z]{2,6}$")
 
 
 def parse_amount(val: str) -> float | None:
@@ -84,8 +85,10 @@ def extract_deposits(pdf_path: str, debug: bool = False) -> list[dict]:
     current_total = 0.0
     is_deposit = False
     in_activity = False
+    date_first = True  # True = old format (Date|Transaction), False = new format (Transaction|Date)
 
     def flush():
+        nonlocal current_total, is_deposit
         if is_deposit and current_date and current_total != 0:
             deposits.append({
                 "date": current_date,
@@ -93,6 +96,8 @@ def extract_deposits(pdf_path: str, debug: bool = False) -> list[dict]:
                 "transaction_type": current_type,
                 "note": f"Betterment – {current_type}",
             })
+        current_total = 0.0
+        is_deposit = False
 
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, 1):
@@ -101,66 +106,101 @@ def extract_deposits(pdf_path: str, debug: bool = False) -> list[dict]:
                 if not words:
                     continue
 
-                text = " ".join(words)
-
                 if debug:
                     print(f"  p{page_num}: {words}", file=sys.stderr)
 
-                # Detect activity section
+                # Detect activity section start/end
                 if "Quarterly" in words and "Activity" in words:
                     in_activity = True
+                    date_first = True  # reset; overridden by column header row below
+                    continue
+                if "Cash" in words and "Activity" in words:
+                    flush()
+                    in_activity = False
                     continue
 
                 if not in_activity:
                     continue
 
-                # Skip column header rows
+                # Detect column order from header row
                 if words[0] in ("Date", "Date 1", "Date 2", "Date 3"):
+                    date_first = True
+                    continue
+                if words[0] == "Transaction":
+                    date_first = False
                     continue
                 if set(words) <= {"Change", "Balance", "Shares", "Value", "Price",
                                   "Transaction", "Portfolio/Fund", "Fund"}:
                     continue
 
                 # --- Detect new transaction group ---
-                # Date is in the first 1-3 words: "May 12 2014"
                 date_str = None
-                for n in (3, 2, 1):
-                    candidate = " ".join(words[:n])
-                    if DATE_RE.match(candidate):
-                        date_str = candidate
-                        remaining = words[n:]
-                        break
+                new_type = None
 
-                if date_str:
-                    new_date = parse_date(date_str)
-                    # Transaction type = words before "Stocks" or "Bonds" keyword
-                    fund_idx = next(
-                        (i for i, w in enumerate(remaining)
-                         if w in ("Stocks", "Bonds", "Cash")),
-                        None
+                if date_first:
+                    # Old format: date at start of row
+                    for n in (3, 2, 1):
+                        candidate = " ".join(words[:n])
+                        if DATE_RE.match(candidate):
+                            date_str = candidate
+                            remaining = words[n:]
+                            fund_idx = next(
+                                (i for i, w in enumerate(remaining)
+                                 if w in ("Stocks", "Bonds", "Cash")
+                                 or TICKER_RE.match(w)
+                                 or w.startswith("$")),
+                                None
+                            )
+                            new_type = " ".join(
+                                remaining[:fund_idx] if fund_idx is not None else remaining
+                            ).strip()
+                            break
+                else:
+                    # New format: Transaction | Date | Fund
+                    # Continuation rows start with a date — fall through to dollar extraction
+                    starts_with_date = any(
+                        DATE_RE.match(" ".join(words[:n]))
+                        for n in (3, 2, 1)
+                        if n <= len(words)
                     )
-                    new_type = " ".join(remaining[:fund_idx]) if fund_idx else " ".join(remaining)
-                    new_type = new_type.strip()
+                    if not starts_with_date:
+                        # New transaction: find date embedded after transaction words
+                        for start in range(1, min(8, len(words))):
+                            for n in (3, 2, 1):
+                                if start + n > len(words):
+                                    continue
+                                if DATE_RE.match(" ".join(words[start:start + n])):
+                                    date_str = " ".join(words[start:start + n])
+                                    type_words = words[:start]
+                                    ticker_idx = next(
+                                        (i for i, w in enumerate(type_words)
+                                         if TICKER_RE.match(w) or w.startswith("$")),
+                                        None
+                                    )
+                                    new_type = " ".join(
+                                        type_words[:ticker_idx] if ticker_idx is not None else type_words
+                                    ).strip()
+                                    break
+                            if date_str:
+                                break
 
-                    # Same date+type repeated on new page = continuation
-                    if new_date == current_date and new_type == current_type:
-                        pass
-                    else:
+                if date_str and new_type is not None:
+                    new_date = parse_date(date_str)
+                    if not (new_date == current_date and new_type == current_type):
                         flush()
                         current_date = new_date
                         current_type = new_type
                         current_total = 0.0
-                        type_lower = current_type.lower()
-                        is_deposit = "deposit" in type_lower or "withdrawal" in type_lower
+                        is_deposit = "deposit" in new_type.lower() or "withdrawal" in new_type.lower()
 
                 if not is_deposit or not current_date:
                     continue
 
                 # --- Extract Change:Value ---
-                # Dollar amounts on fund rows (in x order): Price, Change:Value, Balance:Value
+                # Dollar amounts on fund rows (x order): Price, Change:Value, Balance:Value
                 dollar_words = [w for w in words if is_dollar(w)]
                 if len(dollar_words) >= 2:
-                    amt = parse_amount(dollar_words[1])  # dollar_words[1] = Change:Value
+                    amt = parse_amount(dollar_words[1])
                     if amt is not None:
                         current_total += amt
 

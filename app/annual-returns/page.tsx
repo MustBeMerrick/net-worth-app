@@ -32,6 +32,89 @@ export default async function AnnualReturnsPage() {
       </header>
 
       <section className="annual-block-list" aria-label="Annual returns by year">
+        {/* To Date block */}
+        <article className="panel annual-block">
+          <div className="annual-block-header">
+            <div>
+              <p>All Time</p>
+              <h2>To Date</h2>
+            </div>
+            <div className="annual-summary-grid">
+              <div>
+                <span>Invested</span>
+                <strong>{currency(allTimeInvested)}</strong>
+              </div>
+              <div>
+                <span>Growth</span>
+                <strong className={currentYearGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                  {currency(currentYearGrowth)}
+                </strong>
+              </div>
+              <div>
+                <span>Return</span>
+                <strong className={currentYearGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                  {percent(currentYearGrowthPercent)}
+                </strong>
+              </div>
+              <div>
+                <span>Balance</span>
+                <strong>{currency(currentYearNetWorth)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <details className="annual-account-dropdown">
+            <summary>
+              <span>Accounts and brokerages</span>
+              <strong>{accountRows.filter((a) => a.latestBalance !== 0 || a.investedTotal !== 0).length} rows</strong>
+            </summary>
+            <div className="annual-table-wrap">
+              <table className="annual-table">
+                <thead>
+                  <tr>
+                    <th>Institution</th>
+                    <th>Account</th>
+                    <th>Total Invested</th>
+                    <th>Total Growth (%)</th>
+                    <th>Total Growth ($)</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accountRows
+                    .filter((a) => a.latestBalance !== 0 || a.investedTotal !== 0)
+                    .map((account) => (
+                      <tr key={account.id}>
+                        <th scope="row">{account.institution}</th>
+                        <td>{account.subaccountName ?? account.name}</td>
+                        <td className="money-cell">{currency(account.investedTotal)}</td>
+                        <td className={account.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                          {percent(account.growthPercent)}
+                        </td>
+                        <td className={account.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
+                          {currency(account.growthDollars)}
+                        </td>
+                        <td className="money-cell">{currency(account.latestBalance)}</td>
+                      </tr>
+                    ))}
+                  <tr className="annual-total-row">
+                    <th scope="row">Total</th>
+                    <td />
+                    <td>{currency(allTimeInvested)}</td>
+                    <td className={currentYearGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                      {percent(currentYearGrowthPercent)}
+                    </td>
+                    <td className={currentYearGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                      {currency(currentYearGrowth)}
+                    </td>
+                    <td>{currency(currentYearNetWorth)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </article>
+
         {/* Current year block */}
         <article className="panel annual-block">
           <div className="annual-block-header">

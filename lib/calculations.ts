@@ -231,48 +231,70 @@ export function basisPointsToPercent(value: number): number {
 export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): AnnualReturnBlock[] {
   const activeAccounts = data.accounts.filter((a) => a.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
 
-  return data.snapshots
-    .filter((snapshot) => snapshot.kind === "year_end" || snapshot.yearEndForYear !== undefined)
+  const yearEndSnapshots = data.snapshots
+    .filter((s) => s.kind === "year_end" || s.yearEndForYear !== undefined)
     .sort((a, b) => {
       const aYear = a.yearEndForYear ?? new Date(a.snapshotDate).getFullYear();
       const bYear = b.yearEndForYear ?? new Date(b.snapshotDate).getFullYear();
-      return bYear - aYear;
-    })
-    .map((snapshot) => {
-      const year = snapshot.yearEndForYear ?? new Date(snapshot.snapshotDate).getFullYear();
-      const balanceByAccountId = new Map(
-        data.snapshotBalances
-          .filter((b) => b.snapshotId === snapshot.id)
-          .map((b) => [b.accountId, b])
-      );
-
-      const rows: AnnualAccountReturn[] = activeAccounts.flatMap((account) => {
-        const balance = balanceByAccountId.get(account.id);
-        if (!balance) return [];
-        const investedTotal = balance.invested ?? 0;
-        const dec31Balance = balance.balance;
-        if (investedTotal === 0 && dec31Balance === 0) return [];
-        const growthDollars = balance.growth ?? dec31Balance - investedTotal;
-        const growthPercent =
-          balance.growthPercentBasisPts === undefined
-            ? investedTotal === 0
-              ? undefined
-              : (growthDollars / investedTotal) * 100
-            : basisPointsToPercent(balance.growthPercentBasisPts);
-        return [{ account, investedTotal, growthPercent, growthDollars, dec31Balance }];
-      });
-
-      return {
-        year,
-        snapshot,
-        rows,
-        totalInvested: snapshot.investedTotal,
-        totalGrowthPercent:
-          snapshot.investedTotal === 0 ? 0 : (snapshot.growthTotal / snapshot.investedTotal) * 100,
-        totalGrowthDollars: snapshot.growthTotal,
-        totalDec31Balance: snapshot.netWorthTotal
-      };
+      return aYear - bYear; // ascending — needed to look up prev year
     });
+
+  // Map year → snapshot for prev-year lookups
+  const snapshotByYear = new Map<number, Snapshot>(
+    yearEndSnapshots.map((s) => {
+      const year = s.yearEndForYear ?? new Date(s.snapshotDate).getFullYear();
+      return [year, s];
+    })
+  );
+
+  return yearEndSnapshots.slice().reverse().map((snapshot) => {
+    const year = snapshot.yearEndForYear ?? new Date(snapshot.snapshotDate).getFullYear();
+
+    const prevSnapshot = snapshotByYear.get(year - 1);
+    const prevInvestedTotal = prevSnapshot?.investedTotal ?? 0;
+
+    const prevBalanceByAccount = new Map(
+      data.snapshotBalances
+        .filter((b) => b.snapshotId === prevSnapshot?.id)
+        .map((b) => [b.accountId, b])
+    );
+
+    const balanceByAccountId = new Map(
+      data.snapshotBalances
+        .filter((b) => b.snapshotId === snapshot.id)
+        .map((b) => [b.accountId, b])
+    );
+
+    const prevNetWorth = prevSnapshot?.netWorthTotal ?? 0;
+    const yearlyInvestedTotal = snapshot.investedTotal - prevInvestedTotal;
+    const totalGrowthDollars = snapshot.netWorthTotal - yearlyInvestedTotal - prevNetWorth;
+    const totalGrowthBase = prevNetWorth !== 0 ? prevNetWorth : yearlyInvestedTotal;
+
+    const rows: AnnualAccountReturn[] = activeAccounts.flatMap((account) => {
+      const balance = balanceByAccountId.get(account.id);
+      if (!balance) return [];
+      const cumulativeInvested = balance.invested ?? 0;
+      const dec31Balance = balance.balance;
+      const prevAcct = prevBalanceByAccount.get(account.id);
+      const yearlyInvested = cumulativeInvested - (prevAcct?.invested ?? 0);
+      const prevDec31Balance = prevAcct?.balance ?? 0;
+      if (yearlyInvested === 0 && dec31Balance === 0) return [];
+      const growthDollars = dec31Balance - yearlyInvested - prevDec31Balance;
+      const growthBase = prevDec31Balance !== 0 ? prevDec31Balance : yearlyInvested;
+      const growthPercent = growthBase === 0 ? undefined : (growthDollars / growthBase) * 100;
+      return [{ account, investedTotal: yearlyInvested, growthPercent, growthDollars, dec31Balance }];
+    });
+
+    return {
+      year,
+      snapshot,
+      rows,
+      totalInvested: yearlyInvestedTotal,
+      totalGrowthPercent: totalGrowthBase === 0 ? 0 : (totalGrowthDollars / totalGrowthBase) * 100,
+      totalGrowthDollars,
+      totalDec31Balance: snapshot.netWorthTotal
+    };
+  });
 }
 
 export function getSnapshotChartPoints(snapshotRows: Snapshot[] = snapshots) {
