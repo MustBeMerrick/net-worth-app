@@ -1,24 +1,28 @@
-import { currency, getSnapshotChartPoints } from "@/lib/calculations";
+"use client";
+
+import { useRef, useState } from "react";
+import { currency, dateLabel, getExponentialFit, getSnapshotChartPoints } from "@/lib/calculations";
 import type { Snapshot } from "@/lib/mock-data";
 
-type SeriesKey = "netWorth" | "invested" | "growth" | "model";
+type SeriesKey = "netWorth" | "invested" | "growth";
 
-const series: Array<{ key: SeriesKey; label: string; color: string }> = [
-  { key: "netWorth", label: "Net Worth", color: "#1d766f" },
+const dataSeries: Array<{ key: SeriesKey; label: string; color: string }> = [
+  { key: "netWorth", label: "Net Worth", color: "#1a1a1a" },
   { key: "invested", label: "Invested", color: "#5572b8" },
-  { key: "growth", label: "Growth", color: "#c25746" },
-  { key: "model", label: "Model", color: "#887056" }
+  { key: "growth", label: "Growth", color: "#2d8a4e" }
 ];
 
-const ML = 72; // left margin for Y labels
+const ML = 72;
 const MR = 16;
 const MT = 12;
-const MB = 28; // bottom margin for X labels
-const CW = 680; // chart width
-const CH = 260; // chart height
+const MB = 28;
+const CW = 680;
+const CH = 260;
 const SW = ML + CW + MR;
 const SH = MT + CH + MB;
 const Y_TICKS = 5;
+const MODEL_SAMPLES = 200;
+const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
 
 function formatYLabel(value: number): string {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -26,8 +30,8 @@ function formatYLabel(value: number): string {
   return `$${Math.round(value)}`;
 }
 
-function cx(index: number, total: number): number {
-  return ML + (total === 1 ? CW / 2 : (index / (total - 1)) * CW);
+function cxMs(ms: number, minMs: number, maxMs: number): number {
+  return ML + ((ms - minMs) / (maxMs - minMs || 1)) * CW;
 }
 
 function cy(value: number, min: number, max: number): number {
@@ -35,31 +39,82 @@ function cy(value: number, min: number, max: number): number {
   return MT + CH - ((value - min) / range) * CH;
 }
 
-function polyPoints(values: number[], min: number, max: number): string {
-  return values.map((v, i) => `${cx(i, values.length).toFixed(1)},${cy(v, min, max).toFixed(1)}`).join(" ");
-}
-
 type TrendChartProps = {
   snapshots?: Snapshot[];
 };
 
+type HoveredPoint = {
+  point: ReturnType<typeof getSnapshotChartPoints>[0];
+  svgX: number;
+  cssXFraction: number; // 0–1 across chart width, for tooltip flip logic
+};
+
 export function TrendChart({ snapshots }: TrendChartProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hovered, setHovered] = useState<HoveredPoint | null>(null);
+
   const data = getSnapshotChartPoints(snapshots);
+  const fit = getExponentialFit(snapshots);
   if (data.length === 0) return null;
 
-  const allValues = data.flatMap((point) => series.map((item) => point[item.key]));
+  const minMs = new Date(data[0].date).getTime();
+  const maxMs = new Date(data[data.length - 1].date).getTime();
+
+  const dataValues = data.flatMap((p) => dataSeries.map((s) => p[s.key]));
+  const modelValues = fit
+    ? Array.from({ length: MODEL_SAMPLES }, (_, i) => {
+        const ms = minMs + (i / (MODEL_SAMPLES - 1)) * (maxMs - minMs);
+        const t = (ms - fit.t0Ms) / MS_PER_YEAR;
+        return fit.a * Math.exp(fit.b * t);
+      }).filter((v) => isFinite(v) && v > 0)
+    : [];
+  const allValues = [...dataValues, ...modelValues];
   const rawMin = Math.min(...allValues);
   const rawMax = Math.max(...allValues);
-  const min = rawMin * 0.92;
-  const max = rawMax * 1.04;
+  const range = rawMax - rawMin || rawMax;
+  const min = rawMin - range * 0.06;
+  const max = rawMax + range * 0.04;
 
   const yTicks = Array.from({ length: Y_TICKS }, (_, i) => {
     const value = min + ((max - min) / (Y_TICKS - 1)) * i;
     return { value, y: cy(value, min, max) };
   });
 
-  // X labels: one per data point, skip alternates if crowded
-  const skipEvery = data.length > 10 ? 2 : 1;
+  const startYear = new Date(minMs).getFullYear();
+  const endYear = new Date(maxMs).getFullYear();
+  const xYears = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+
+  const modelPolyPoints = fit
+    ? Array.from({ length: MODEL_SAMPLES }, (_, i) => {
+        const ms = minMs + (i / (MODEL_SAMPLES - 1)) * (maxMs - minMs);
+        const t = (ms - fit.t0Ms) / MS_PER_YEAR;
+        const y = fit.a * Math.exp(fit.b * t);
+        const x = cxMs(ms, minMs, maxMs);
+        return `${x.toFixed(1)},${cy(y, min, max).toFixed(1)}`;
+      }).join(" ")
+    : null;
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * SW;
+    if (relX < ML || relX > ML + CW) {
+      setHovered(null);
+      return;
+    }
+    const ms = minMs + ((relX - ML) / CW) * (maxMs - minMs);
+    let nearest = data[0];
+    let nearestDist = Infinity;
+    for (const p of data) {
+      const dist = Math.abs(new Date(p.date).getTime() - ms);
+      if (dist < nearestDist) { nearestDist = dist; nearest = p; }
+    }
+    const pointMs = new Date(nearest.date).getTime();
+    const svgX = cxMs(pointMs, minMs, maxMs);
+    const cssXFraction = (svgX - ML) / CW;
+    setHovered({ point: nearest, svgX, cssXFraction });
+  }
 
   return (
     <section className="panel chart-panel">
@@ -69,80 +124,128 @@ export function TrendChart({ snapshots }: TrendChartProps) {
           <h2>Net Worth Vs. Time</h2>
         </div>
       </div>
-      <div className="chart-wrap">
-        <svg viewBox={`0 0 ${SW} ${SH}`} role="img" aria-label="Snapshot trend chart">
-          {/* Y gridlines + labels */}
+      <div className="chart-wrap" style={{ position: "relative" }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${SW} ${SH}`}
+          role="img"
+          aria-label="Snapshot trend chart"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHovered(null)}
+          style={{ cursor: "crosshair", display: "block" }}
+        >
           {yTicks.map(({ value, y }) => (
             <g key={value}>
               <line x1={ML} x2={ML + CW} y1={y.toFixed(1)} y2={y.toFixed(1)} className="chart-grid" />
-              <text
-                x={(ML - 8).toString()}
-                y={y.toFixed(1)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize="11"
-                fill="#667169"
-              >
+              <text x={(ML - 8).toString()} y={y.toFixed(1)} textAnchor="end" dominantBaseline="middle" fontSize="11" fill="#667169">
                 {formatYLabel(value)}
               </text>
             </g>
           ))}
 
-          {/* X labels */}
-          {data.map((point, i) => {
-            if (i % skipEvery !== 0) return null;
-            const x = cx(i, data.length);
-            const year = new Date(point.date).getFullYear();
+          {xYears.map((year) => {
+            const ms = new Date(`${year}-01-01`).getTime();
+            if (ms < minMs || ms > maxMs) return null;
+            const x = cxMs(ms, minMs, maxMs);
             return (
-              <text
-                key={i}
-                x={x.toFixed(1)}
-                y={(MT + CH + 18).toString()}
-                textAnchor="middle"
-                fontSize="11"
-                fill="#667169"
-              >
+              <text key={year} x={x.toFixed(1)} y={(MT + CH + 18).toString()} textAnchor="middle" fontSize="11" fill="#667169">
                 {year}
               </text>
             );
           })}
 
-          {/* Y axis line */}
           <line x1={ML} x2={ML} y1={MT} y2={MT + CH} stroke="#d9d5c8" strokeWidth="1" />
 
-          {/* Series lines */}
-          {series.map((item) => (
-            <polyline
-              key={item.key}
-              fill="none"
-              stroke={item.color}
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points={polyPoints(data.map((p) => p[item.key]), min, max)}
-            />
-          ))}
+          {modelPolyPoints && (
+            <polyline fill="none" stroke="#b0b0b0" strokeWidth="1.5" strokeDasharray="5 3" strokeLinecap="round" strokeLinejoin="round" points={modelPolyPoints} />
+          )}
 
-          {/* Data point dots for the latest value */}
-          {series.map((item) => {
+          {dataSeries.map((item) => {
+            const points = data.map((p) => {
+              const x = cxMs(new Date(p.date).getTime(), minMs, maxMs);
+              const y = cy(p[item.key], min, max);
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(" ");
+            return (
+              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={points} />
+            );
+          })}
+
+          {/* End-of-series dots */}
+          {dataSeries.map((item) => {
             const last = data[data.length - 1];
-            const x = cx(data.length - 1, data.length);
+            const x = cxMs(new Date(last.date).getTime(), minMs, maxMs);
             const y = cy(last[item.key], min, max);
             return <circle key={item.key} cx={x.toFixed(1)} cy={y.toFixed(1)} r="3.5" fill={item.color} />;
           })}
+
+          {/* Hover crosshair + dots */}
+          {hovered && (
+            <>
+              <line x1={hovered.svgX.toFixed(1)} x2={hovered.svgX.toFixed(1)} y1={MT} y2={MT + CH} stroke="#aaa" strokeWidth="1" strokeDasharray="3 2" />
+              {dataSeries.map((item) => (
+                <circle
+                  key={item.key}
+                  cx={hovered.svgX.toFixed(1)}
+                  cy={cy(hovered.point[item.key], min, max).toFixed(1)}
+                  r="4.5"
+                  fill={item.color}
+                  stroke="white"
+                  strokeWidth="1.5"
+                />
+              ))}
+            </>
+          )}
         </svg>
+
+        {/* Tooltip */}
+        {hovered && (
+          <div
+            className="chart-tooltip"
+            style={{
+              left: `calc(${hovered.cssXFraction * 100}% + ${(hovered.cssXFraction < 0.6 ? 12 : -12)}px)`,
+              transform: hovered.cssXFraction < 0.6 ? "none" : "translateX(-100%)",
+            }}
+          >
+            <div className="chart-tooltip-date">{dateLabel(hovered.point.date)}</div>
+            {dataSeries.map((item) => (
+              <div key={item.key} className="chart-tooltip-row">
+                <span className="chart-tooltip-swatch" style={{ background: item.color }} />
+                <span className="chart-tooltip-label">{item.label}</span>
+                <span className="chart-tooltip-value">{currency(hovered.point[item.key])}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
       <div className="chart-footer">
         <div className="chart-legend">
-          {series.map((item) => (
+          {dataSeries.map((item) => (
             <span key={item.key}>
               <i style={{ backgroundColor: item.color }} />
               {item.label}
             </span>
           ))}
+          <span>
+            <i style={{ backgroundColor: "#b0b0b0" }} />
+            Model
+          </span>
         </div>
         <strong>{currency(data[data.length - 1].netWorth)}</strong>
       </div>
+
+      {fit && (() => {
+        const a = fit.a;
+        const aLabel = a >= 1_000_000 ? `$${(a / 1_000_000).toFixed(2)}M` : a >= 1_000 ? `$${(a / 1_000).toFixed(1)}k` : `$${Math.round(a)}`;
+        return (
+          <p className="chart-equation">
+            y = {aLabel} · e<sup>{(fit.b * 100).toFixed(2)}% · t</sup>,&ensp;CAGR ≈ {(fit.annualRate * 100).toFixed(2)}%&ensp;(t = years from {fit.startYear})
+            <br />
+            R² = {fit.r2.toFixed(4)}
+          </p>
+        );
+      })()}
     </section>
   );
 }

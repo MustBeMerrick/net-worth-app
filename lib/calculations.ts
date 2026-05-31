@@ -297,15 +297,69 @@ export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): Annu
   });
 }
 
-export function getSnapshotChartPoints(snapshotRows: Snapshot[] = snapshots) {
-  return snapshotRows
+export type ExponentialFit = {
+  a: number;
+  b: number;
+  annualRate: number;
+  startYear: number;
+  t0Ms: number;
+  r2: number;
+} | null;
+
+export function getExponentialFit(snapshotRows: Snapshot[] = snapshots): ExponentialFit {
+  const sorted = snapshotRows
     .slice()
     .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate))
-    .map((snapshot) => ({
+    .filter((s) => s.netWorthTotal > 0);
+
+  if (sorted.length < 2) return null;
+
+  const t0 = new Date(sorted[0].snapshotDate).getTime();
+  const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
+
+  const pairs = sorted.map((s) => ({
+    t: (new Date(s.snapshotDate).getTime() - t0) / msPerYear,
+    lnY: Math.log(s.netWorthTotal)
+  }));
+
+  const n = pairs.length;
+  const sumT = pairs.reduce((s, p) => s + p.t, 0);
+  const sumY = pairs.reduce((s, p) => s + p.lnY, 0);
+  const sumTT = pairs.reduce((s, p) => s + p.t * p.t, 0);
+  const sumTY = pairs.reduce((s, p) => s + p.t * p.lnY, 0);
+  const denom = n * sumTT - sumT * sumT;
+  if (denom === 0) return null;
+
+  const b = (n * sumTY - sumT * sumY) / denom;
+  const a = Math.exp((sumY - b * sumT) / n);
+  const annualRate = Math.exp(b) - 1;
+  const startYear = new Date(sorted[0].snapshotDate).getFullYear();
+
+  const meanLnY = sumY / n;
+  const ssTot = pairs.reduce((s, p) => s + (p.lnY - meanLnY) ** 2, 0);
+  const ssRes = pairs.reduce((s, p) => s + (p.lnY - (Math.log(a) + b * p.t)) ** 2, 0);
+  const r2 = ssTot === 0 ? 1 : 1 - ssRes / ssTot;
+
+  return { a, b, annualRate, startYear, t0Ms: t0, r2 };
+}
+
+export function getSnapshotChartPoints(snapshotRows: Snapshot[] = snapshots) {
+  const sorted = snapshotRows
+    .slice()
+    .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
+
+  const fit = getExponentialFit(snapshotRows);
+  const t0 = fit ? new Date(sorted.find((s) => s.netWorthTotal > 0)!.snapshotDate).getTime() : 0;
+  const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
+
+  return sorted.map((snapshot) => {
+    const t = (new Date(snapshot.snapshotDate).getTime() - t0) / msPerYear;
+    return {
       date: snapshot.snapshotDate,
       netWorth: snapshot.netWorthTotal,
       invested: snapshot.investedTotal,
       growth: snapshot.growthTotal,
-      model: Math.round(snapshot.investedTotal * 1.42)
-    }));
+      model: fit ? Math.round(fit.a * Math.exp(fit.b * t)) : 0
+    };
+  });
 }
