@@ -232,7 +232,6 @@ export function TrendChart({ snapshots }: TrendChartProps) {
             Model
           </span>
         </div>
-        <strong>{currency(data[data.length - 1].netWorth)}</strong>
       </div>
 
       {fit && (() => {
