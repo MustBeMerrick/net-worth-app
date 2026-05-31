@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { currency, dateLabel } from "@/lib/calculations";
 import type { Account, Contribution } from "@/lib/mock-data";
 import { deleteContributionById } from "./actions";
-import { KindSelector } from "./KindSelector";
 
 const UNDO_DELAY_MS = 5000;
 const EXIT_ANIM_MS = 250;
@@ -90,7 +89,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
   });
 
   const filteredTotal = visibleRows
-    .filter((r) => r.id !== rowLeavingId && r.kind !== "withdrawal")
+    .filter((r) => r.id !== rowLeavingId)
     .reduce((sum, r) => sum + r.amount, 0);
 
   const isFiltered = filterAccountId !== "all" || filterYear !== "all";
@@ -172,12 +171,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
                     <strong>{account?.institution ?? "Unknown"}</strong>
                     <small>{account?.subaccountName ?? account?.name}</small>
                   </td>
-                  <td>
-                    {currency(contribution.amount)}
-                    {contribution.amount < 0 && (
-                      <KindSelector contributionId={contribution.id} kind={contribution.kind} />
-                    )}
-                  </td>
+                  <td>{currency(contribution.amount)}</td>
                   <td>{contribution.note}</td>
                   <td className="table-action-cell">
                     <button

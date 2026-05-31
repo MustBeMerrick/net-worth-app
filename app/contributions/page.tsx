@@ -9,7 +9,7 @@ export default async function ContributionsPage() {
   const data = await getFinanceData();
   const accountById = new Map(data.accounts.map((account) => [account.id, account]));
   const rows = data.contributions;
-  const total = rows.filter((c) => c.kind !== "withdrawal").reduce((sum, c) => sum + c.amount, 0);
+  const total = rows.reduce((sum, c) => sum + c.amount, 0);
 
   return (
     <div className="page-stack">

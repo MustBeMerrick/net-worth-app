@@ -84,7 +84,7 @@ export async function takeYearEndSnapshot(formData: FormData) {
     prisma.balanceFetch.findMany({ orderBy: { fetchedAt: "desc" } }),
     prisma.contribution.groupBy({
       by: ["accountId"],
-      where: { yearBucket: { lte: year }, kind: { not: "withdrawal" } },
+      where: { yearBucket: { lte: year } },
       _sum: { amountCents: true }
     })
   ]);
