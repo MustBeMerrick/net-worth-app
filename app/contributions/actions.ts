@@ -73,7 +73,16 @@ export async function addContribution(formData: FormData) {
   revalidatePath("/accounts");
   revalidatePath("/contributions");
   revalidatePath("/annual-returns");
-  redirect("/contributions");
+
+  const filterAccount = fieldValue(formData, "_account");
+  const filterYear = fieldValue(formData, "_year");
+  const filterKind = fieldValue(formData, "_kind");
+  const qs = new URLSearchParams();
+  if (filterAccount) qs.set("account", filterAccount);
+  if (filterYear) qs.set("year", filterYear);
+  if (filterKind) qs.set("kind", filterKind);
+  const qStr = qs.toString();
+  redirect(qStr ? `/contributions?${qStr}` : "/contributions");
 }
 
 export async function updateContributionKind(contributionId: string, kind: "contribution" | "withdrawal") {

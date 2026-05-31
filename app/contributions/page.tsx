@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { accountLabel, currency } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 import { addContribution } from "./actions";
@@ -5,7 +6,12 @@ import { ContributionsTable } from "./ContributionsTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContributionsPage() {
+export default async function ContributionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
   const data = await getFinanceData();
   const accountById = new Map(data.accounts.map((account) => [account.id, account]));
   const rows = data.contributions;
@@ -36,6 +42,9 @@ export default async function ContributionsPage() {
           </div>
         </div>
         <form className="entry-form" action={addContribution}>
+          <input type="hidden" name="_account" value={params.account ?? ""} />
+          <input type="hidden" name="_year" value={params.year ?? ""} />
+          <input type="hidden" name="_kind" value={params.kind ?? ""} />
           <label>
             <span>Account</span>
             <select name="accountId" required defaultValue="">
@@ -79,7 +88,9 @@ export default async function ContributionsPage() {
       </section>
 
       <section className="panel">
-        <ContributionsTable rows={rows} accountById={accountById} />
+        <Suspense>
+          <ContributionsTable rows={rows} accountById={accountById} />
+        </Suspense>
       </section>
     </div>
   );

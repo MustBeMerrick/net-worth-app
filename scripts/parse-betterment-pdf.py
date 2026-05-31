@@ -42,7 +42,7 @@ def parse_amount(val: str) -> float | None:
 def parse_date(val: str) -> str | None:
     for fmt in ("%b %d %Y", "%B %d %Y", "%m/%d/%Y", "%m/%d/%y"):
         try:
-            return datetime.strptime(val.strip(), fmt).strftime("%Y-%m-%d")
+            return datetime.strptime(val.strip(), fmt).strftime("%m/%d/%Y")
         except ValueError:
             continue
     return None
@@ -109,12 +109,18 @@ def extract_deposits(pdf_path: str, debug: bool = False) -> list[dict]:
                 if debug:
                     print(f"  p{page_num}: {words}", file=sys.stderr)
 
+                words_upper = [w.upper() for w in words]
+
                 # Detect activity section start/end
-                if "Quarterly" in words and "Activity" in words:
+                if "QUARTERLY" in words_upper and "ACTIVITY" in words_upper:
                     in_activity = True
                     date_first = True  # reset; overridden by column header row below
                     continue
-                if "Cash" in words and "Activity" in words:
+                if "MONTHLY" in words_upper and "ACTIVITY" in words_upper and "DETAIL" in words_upper:
+                    in_activity = True
+                    date_first = False
+                    continue
+                if "CASH" in words_upper and "ACTIVITY" in words_upper:
                     flush()
                     in_activity = False
                     continue
@@ -126,7 +132,7 @@ def extract_deposits(pdf_path: str, debug: bool = False) -> list[dict]:
                 if words[0] in ("Date", "Date 1", "Date 2", "Date 3"):
                     date_first = True
                     continue
-                if words[0] == "Transaction":
+                if words[0].startswith("Transaction"):
                     date_first = False
                     continue
                 if set(words) <= {"Change", "Balance", "Shares", "Value", "Price",
@@ -226,10 +232,10 @@ def main():
         sys.exit(1)
 
     for d in deposits:
-        print(f"  {d['date']}  {d['transaction_type']:<40}  ${d['amount']:>10,.2f}", file=sys.stderr)
+        print(f"  {d['transaction_type']:<40}  {d['date']}  ${d['amount']:>10,.2f}", file=sys.stderr)
 
     if args.output:
-        fieldnames = ["date", "amount", "transaction_type", "note"]
+        fieldnames = ["transaction_type", "date", "amount", "note"]
         with open(args.output, "w", newline="") as out:
             writer = csv.DictWriter(out, fieldnames=fieldnames)
             writer.writeheader()

@@ -215,6 +215,13 @@ export function TrendChart({ snapshots }: TrendChartProps) {
                 <span className="chart-tooltip-value">{currency(hovered.point[item.key])}</span>
               </div>
             ))}
+            {hovered.point.model > 0 && (
+              <div className="chart-tooltip-row">
+                <span className="chart-tooltip-swatch" style={{ background: "#b0b0b0" }} />
+                <span className="chart-tooltip-label">Model</span>
+                <span className="chart-tooltip-value">{currency(hovered.point.model)}</span>
+              </div>
+            )}
           </div>
         )}
       </div>

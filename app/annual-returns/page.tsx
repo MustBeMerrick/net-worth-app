@@ -19,8 +19,23 @@ export default async function AnnualReturnsPage() {
   const currentYearInvested = Object.values(currentYearContribsByAccount).reduce((s, v) => s + v, 0);
   const allTimeInvested = accountRows.reduce((s, a) => s + a.investedTotal, 0);
   const currentYearNetWorth = accountRows.reduce((s, a) => s + a.latestBalance, 0);
-  const currentYearGrowth = currentYearNetWorth - allTimeInvested;
-  const currentYearGrowthPercent = allTimeInvested === 0 ? 0 : (currentYearGrowth / allTimeInvested) * 100;
+
+  // Prior year-end snapshot for correct 2026 growth baseline
+  const prevYearSnapshot = [...data.snapshots]
+    .filter((s) => (s.yearEndForYear ?? new Date(s.snapshotDate).getFullYear()) === CURRENT_YEAR - 1)
+    .sort((a, b) => b.snapshotDate.localeCompare(a.snapshotDate))[0];
+  const prevBalanceByAccount = new Map(
+    data.snapshotBalances
+      .filter((b) => b.snapshotId === prevYearSnapshot?.id)
+      .map((b) => [b.accountId, b])
+  );
+  const prevYearNetWorth = prevYearSnapshot?.netWorthTotal ?? 0;
+  const inProgressGrowth = currentYearNetWorth - currentYearInvested - prevYearNetWorth;
+  const inProgressGrowthBase = prevYearNetWorth !== 0 ? prevYearNetWorth : currentYearInvested;
+  const inProgressGrowthPercent = inProgressGrowthBase === 0 ? 0 : (inProgressGrowth / inProgressGrowthBase) * 100;
+
+  const allTimeGrowth = currentYearNetWorth - allTimeInvested;
+  const allTimeGrowthPercent = allTimeInvested === 0 ? 0 : (allTimeGrowth / allTimeInvested) * 100;
 
   return (
     <div className="page-stack">
@@ -46,14 +61,14 @@ export default async function AnnualReturnsPage() {
               </div>
               <div>
                 <span>Growth</span>
-                <strong className={currentYearGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                  {currency(currentYearGrowth)}
+                <strong className={allTimeGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                  {currency(allTimeGrowth)}
                 </strong>
               </div>
               <div>
                 <span>Return</span>
-                <strong className={currentYearGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                  {percent(currentYearGrowthPercent)}
+                <strong className={allTimeGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                  {percent(allTimeGrowthPercent)}
                 </strong>
               </div>
               <div>
@@ -101,11 +116,11 @@ export default async function AnnualReturnsPage() {
                     <th scope="row">Total</th>
                     <td />
                     <td>{currency(allTimeInvested)}</td>
-                    <td className={currentYearGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                      {percent(currentYearGrowthPercent)}
+                    <td className={allTimeGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                      {percent(allTimeGrowthPercent)}
                     </td>
-                    <td className={currentYearGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                      {currency(currentYearGrowth)}
+                    <td className={allTimeGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                      {currency(allTimeGrowth)}
                     </td>
                     <td>{currency(currentYearNetWorth)}</td>
                   </tr>
@@ -129,19 +144,19 @@ export default async function AnnualReturnsPage() {
               </div>
               <div>
                 <span>Growth</span>
-                <strong className={currentYearGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                  {currency(currentYearGrowth)}
+                <strong className={inProgressGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                  {currency(inProgressGrowth)}
                 </strong>
               </div>
               <div>
                 <span>Return</span>
-                <strong className={currentYearGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                  {percent(currentYearGrowthPercent)}
+                <strong className={inProgressGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                  {percent(inProgressGrowthPercent)}
                 </strong>
               </div>
               <div>
                 <span>Balance</span>
-                <strong>—</strong>
+                <strong>{currency(currentYearNetWorth)}</strong>
               </div>
             </div>
           </div>
@@ -149,7 +164,7 @@ export default async function AnnualReturnsPage() {
           <details className="annual-account-dropdown">
             <summary>
               <span>Accounts and brokerages</span>
-              <strong>{accountRows.length} rows</strong>
+              <strong>{accountRows.filter((a) => (currentYearContribsByAccount[a.id] ?? 0) !== 0 || a.latestBalance !== 0).length} rows</strong>
             </summary>
 
             <div className="annual-table-wrap">
@@ -158,43 +173,49 @@ export default async function AnnualReturnsPage() {
                   <tr>
                     <th>Institution</th>
                     <th>Account</th>
-                    <th>Total Invested</th>
-                    <th>Total Growth (%)</th>
-                    <th>Total Growth ($)</th>
-                    <th>Dec 31st Balance</th>
+                    <th>Invested</th>
+                    <th>Growth (%)</th>
+                    <th>Growth ($)</th>
+                    <th>Balance</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {accountRows.map((account) => {
-                    const acctInvested = currentYearContribsByAccount[account.id] ?? 0;
-                    const acctGrowth = account.latestBalance - account.investedTotal;
-                    const acctGrowthPercent = account.investedTotal === 0 ? 0 : (acctGrowth / account.investedTotal) * 100;
-                    return (
-                    <tr key={account.id}>
-                      <th scope="row">{account.institution}</th>
-                      <td>{account.subaccountName ?? account.name}</td>
-                      <td className="money-cell">{currency(acctInvested)}</td>
-                      <td className={acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                        {percent(acctGrowthPercent)}
-                      </td>
-                      <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                        {currency(acctGrowth)}
-                      </td>
-                      <td className="money-cell">—</td>
-                    </tr>
-                  )})}
+                  {accountRows
+                    .filter((a) => (currentYearContribsByAccount[a.id] ?? 0) !== 0 || a.latestBalance !== 0)
+                    .map((account) => {
+                      const acctInvested = currentYearContribsByAccount[account.id] ?? 0;
+                      const prevAcct = prevBalanceByAccount.get(account.id);
+                      const prevDec31Balance = prevAcct?.balance ?? 0;
+                      const acctGrowth = account.latestBalance - acctInvested - prevDec31Balance;
+                      const acctGrowthBase = prevDec31Balance !== 0 ? prevDec31Balance : acctInvested;
+                      const acctGrowthPercent = acctGrowthBase === 0 ? undefined : (acctGrowth / acctGrowthBase) * 100;
+                      return (
+                        <tr key={account.id}>
+                          <th scope="row">{account.institution}</th>
+                          <td>{account.subaccountName ?? account.name}</td>
+                          <td className="money-cell">{currency(acctInvested)}</td>
+                          <td className={acctGrowthPercent !== undefined && acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                            {acctGrowthPercent === undefined ? "—" : percent(acctGrowthPercent)}
+                          </td>
+                          <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                            {currency(acctGrowth)}
+                          </td>
+                          <td className="money-cell">{currency(account.latestBalance)}</td>
+                        </tr>
+                      );
+                    })}
 
                   <tr className="annual-total-row">
                     <th scope="row">Total</th>
                     <td />
                     <td>{currency(currentYearInvested)}</td>
-                    <td className={currentYearGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                      {percent(currentYearGrowthPercent)}
+                    <td className={inProgressGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                      {percent(inProgressGrowthPercent)}
                     </td>
-                    <td className={currentYearGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                      {currency(currentYearGrowth)}
+                    <td className={inProgressGrowth < 0 ? "negative-cell" : "positive-cell"}>
+                      {currency(inProgressGrowth)}
                     </td>
-                    <td>—</td>
+                    <td>{currency(currentYearNetWorth)}</td>
                   </tr>
                 </tbody>
               </table>

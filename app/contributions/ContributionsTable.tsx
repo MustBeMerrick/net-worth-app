@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { currency, dateLabel } from "@/lib/calculations";
 import type { Account, Contribution } from "@/lib/mock-data";
 import { deleteContributionById } from "./actions";
@@ -19,8 +20,20 @@ type PendingDelete = {
 };
 
 export function ContributionsTable({ rows, accountById }: Props) {
-  const [filterAccountId, setFilterAccountId] = useState("all");
-  const [filterYear, setFilterYear] = useState("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [filterAccountId, setFilterAccountId] = useState(searchParams.get("account") ?? "all");
+  const [filterYear, setFilterYear] = useState(searchParams.get("year") ?? "all");
+  const [filterKind, setFilterKind] = useState(searchParams.get("kind") ?? "all");
+
+  const updateParams = useCallback((account: string, year: string, kind: string) => {
+    const params = new URLSearchParams();
+    if (account !== "all") params.set("account", account);
+    if (year !== "all") params.set("year", year);
+    if (kind !== "all") params.set("kind", kind);
+    const qs = params.toString();
+    router.replace(qs ? `/contributions?${qs}` : "/contributions", { scroll: false });
+  }, [router]);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [rowLeavingId, setRowLeavingId] = useState<string | null>(null);
   const [isToastLeaving, setIsToastLeaving] = useState(false);
@@ -85,6 +98,8 @@ export function ContributionsTable({ rows, accountById }: Props) {
     if (r.id === pendingDelete?.id && r.id !== rowLeavingId) return false;
     if (filterAccountId !== "all" && r.accountId !== filterAccountId) return false;
     if (filterYear !== "all" && new Date(r.contributionDate).getFullYear() !== Number(filterYear)) return false;
+    if (filterKind === "contribution" && r.amount <= 0) return false;
+    if (filterKind === "withdrawal" && r.amount >= 0) return false;
     return true;
   });
 
@@ -92,7 +107,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
     .filter((r) => r.id !== rowLeavingId)
     .reduce((sum, r) => sum + r.amount, 0);
 
-  const isFiltered = filterAccountId !== "all" || filterYear !== "all";
+  const isFiltered = filterAccountId !== "all" || filterYear !== "all" || filterKind !== "all";
 
   return (
     <>
@@ -106,7 +121,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
       <div className="table-filters">
         <select
           value={filterAccountId}
-          onChange={(e) => setFilterAccountId(e.target.value)}
+          onChange={(e) => { setFilterAccountId(e.target.value); updateParams(e.target.value, filterYear, filterKind); }}
           aria-label="Filter by account"
         >
           <option value="all">All accounts</option>
@@ -119,13 +134,23 @@ export function ContributionsTable({ rows, accountById }: Props) {
 
         <select
           value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
+          onChange={(e) => { setFilterYear(e.target.value); updateParams(filterAccountId, e.target.value, filterKind); }}
           aria-label="Filter by year"
         >
           <option value="all">All years</option>
           {yearOptions.map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
+        </select>
+
+        <select
+          value={filterKind}
+          onChange={(e) => { setFilterKind(e.target.value); updateParams(filterAccountId, filterYear, e.target.value); }}
+          aria-label="Filter by type"
+        >
+          <option value="all">All types</option>
+          <option value="contribution">Deposits</option>
+          <option value="withdrawal">Withdrawals</option>
         </select>
 
         {isFiltered && (
@@ -135,7 +160,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
         {isFiltered && (
           <button
             className="filter-clear"
-            onClick={() => { setFilterAccountId("all"); setFilterYear("all"); }}
+            onClick={() => { setFilterAccountId("all"); setFilterYear("all"); setFilterKind("all"); updateParams("all", "all", "all"); }}
           >
             Clear
           </button>
