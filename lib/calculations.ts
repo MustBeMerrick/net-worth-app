@@ -229,23 +229,27 @@ export function basisPointsToPercent(value: number): number {
 export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): AnnualReturnBlock[] {
   const activeAccounts = data.accounts.filter((a) => a.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
 
-  const yearEndSnapshots = data.snapshots
-    .filter((s) => s.kind === "year_end" || s.yearEndForYear !== undefined)
-    .sort((a, b) => {
-      const aYear = a.yearEndForYear ?? new Date(a.snapshotDate).getFullYear();
-      const bYear = b.yearEndForYear ?? new Date(b.snapshotDate).getFullYear();
-      return aYear - bYear; // ascending — needed to look up prev year
-    });
+  const sortByYear = (a: Snapshot, b: Snapshot) => {
+    const aYear = a.yearEndForYear ?? new Date(a.snapshotDate).getFullYear();
+    const bYear = b.yearEndForYear ?? new Date(b.snapshotDate).getFullYear();
+    return aYear - bYear;
+  };
 
-  // Map year → snapshot for prev-year lookups
+  const allYearEndSnapshots = data.snapshots
+    .filter((s) => s.kind === "year_end" || s.yearEndForYear !== undefined)
+    .sort(sortByYear);
+
+  const visibleYearEndSnapshots = allYearEndSnapshots.filter((s) => s.notes !== "hidden");
+
+  // Map year → snapshot for prev-year lookups (includes hidden anchors)
   const snapshotByYear = new Map<number, Snapshot>(
-    yearEndSnapshots.map((s) => {
+    allYearEndSnapshots.map((s) => {
       const year = s.yearEndForYear ?? new Date(s.snapshotDate).getFullYear();
       return [year, s];
     })
   );
 
-  return yearEndSnapshots.slice().reverse().map((snapshot) => {
+  return visibleYearEndSnapshots.slice().reverse().map((snapshot) => {
     const year = snapshot.yearEndForYear ?? new Date(snapshot.snapshotDate).getFullYear();
 
     const prevSnapshot = snapshotByYear.get(year - 1);
@@ -306,7 +310,7 @@ export type ExponentialFit = {
 
 export function getExponentialFit(snapshotRows: Snapshot[] = snapshots): ExponentialFit {
   const sorted = snapshotRows
-    .slice()
+    .filter((s) => s.notes !== "hidden")
     .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate))
     .filter((s) => s.netWorthTotal > 0);
 
@@ -343,7 +347,7 @@ export function getExponentialFit(snapshotRows: Snapshot[] = snapshots): Exponen
 
 export function getSnapshotChartPoints(snapshotRows: Snapshot[] = snapshots) {
   const sorted = snapshotRows
-    .slice()
+    .filter((s) => s.notes !== "hidden")
     .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
 
   const fit = getExponentialFit(snapshotRows);

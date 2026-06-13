@@ -62,7 +62,8 @@ export async function getFinanceData(): Promise<FinanceData> {
     yearEndForYear: snapshot.yearEndForYear ?? undefined,
     investedTotal: dollars(snapshot.investedTotalCents),
     netWorthTotal: dollars(snapshot.netWorthTotalCents),
-    growthTotal: dollars(snapshot.growthTotalCents)
+    growthTotal: dollars(snapshot.growthTotalCents),
+    notes: snapshot.notes ?? undefined
   }));
 
   const snapshotBalances: SnapshotBalance[] = snapshotBalanceRows.map((balance) => ({
