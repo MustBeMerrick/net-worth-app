@@ -47,7 +47,7 @@ export default async function ContributionsPage({
           <input type="hidden" name="_kind" value={params.kind ?? ""} />
           <label>
             <span>Account</span>
-            <select name="accountId" required defaultValue="fidelity-401k">
+            <select name="accountId" required defaultValue="">
               <option value="" disabled>
                 Select account
               </option>
@@ -62,7 +62,7 @@ export default async function ContributionsPage({
           </label>
           <label>
             <span>Date</span>
-            <input name="contributionDate" type="date" required defaultValue="2015-01-01" />
+            <input name="contributionDate" type="date" required />
           </label>
           <label>
             <span>Amount</span>
