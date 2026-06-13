@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { PickupNote } from "@/components/PickupNote";
 import "./globals.css";
 
 const navItems = [
@@ -50,6 +51,7 @@ export default function RootLayout({
             </nav>
           </aside>
           <main className="main-content">{children}</main>
+          <PickupNote />
         </div>
       </body>
     </html>

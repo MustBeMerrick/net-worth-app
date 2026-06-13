@@ -1086,3 +1086,79 @@ tr.row-leaving {
     grid-template-columns: 1fr;
   }
 }
+
+/* Pickup note */
+.pickup-note {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  max-width: 220px;
+}
+
+.pickup-note-display {
+  background: #fffbe6;
+  border: 1px solid #e6d87a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: #5a4e00;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: box-shadow 0.15s;
+  max-width: 220px;
+}
+
+.pickup-note-display:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+.pickup-note-empty {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.pickup-note-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.pickup-note-textarea {
+  background: #fffbe6;
+  border: 1px solid #e6d87a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: #5a4e00;
+  width: 220px;
+  resize: vertical;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  outline: none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.pickup-note-textarea:focus {
+  border-color: #c4a800;
+  box-shadow: 0 0 0 2px rgba(196,168,0,0.2);
+}
+
+.pickup-note-clear {
+  font-size: 0.65rem;
+  color: #999;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.pickup-note-clear:hover {
+  color: #555;
+}
