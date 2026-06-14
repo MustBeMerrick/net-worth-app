@@ -2,11 +2,21 @@
 """
 Parse a Robinhood/Apex monthly statement PDF and extract ACH deposits and withdrawals.
 
-Handles two statement formats:
-  Old (Apex): ACH rows in "FUNDS PAID AND RECEIVED" section
-              ['ACH', 'MM/DD/YY', 'C', 'ACH', 'DEPOSIT', '100.00']
-  New (RHS):  ACH rows in "Account Activity" section
-              ['ACH', 'Deposit', 'Margin', 'ACH', 'MM/DD/YYYY', '$1,000.00']
+Handles three statement formats:
+  Old (Apex, normal):   ACH rows in "FUNDS PAID AND RECEIVED" section
+                        ['ACH', 'MM/DD/YY', 'C', 'ACH', 'DEPOSIT', '100.00']
+  Old (Apex, mirrored): Same section but text is horizontally flipped in the PDF.
+                        Detected when 'SDNUF' and 'HCA' appear in extracted text.
+                        Each transaction block (line-by-line) looks like:
+                          [reversed_amount]
+                          TISOPED  (= DEPOSIT reversed)
+                          HCA
+                          M  (code)
+                          [reversed_date]  e.g. '61/41/70' = 07/14/16
+                          HCA
+                          [account_number]
+  New (RHS):            ACH rows in "Account Activity" section
+                        ['ACH', 'Deposit', 'Margin', 'ACH', 'MM/DD/YYYY', '$1,000.00']
 
 Usage:
     python3 scripts/parse-robinhood-pdf.py statement.pdf
@@ -30,6 +40,7 @@ except ImportError:
 
 DATE_RE_SHORT = re.compile(r"^\d{2}/\d{2}/\d{2}$")   # MM/DD/YY  (old format)
 DATE_RE_LONG  = re.compile(r"^\d{2}/\d{2}/\d{4}$")   # MM/DD/YYYY (new format)
+AMOUNT_RE     = re.compile(r"^\$?[\d,]+\.\d{2}\$?$")  # e.g. 00.003,1$ or $1,300.00
 
 
 def parse_amount(val: str) -> float | None:
@@ -119,7 +130,103 @@ def try_parse_new_format(words: list[str]) -> dict | None:
         return {"date": date_str, "amount": -amount, "kind": "ACH Withdrawal"}
 
 
+def parse_mirrored_funds_section(lines: list[str]) -> list[dict]:
+    """
+    Parse transactions from a mirrored Apex FUNDS PAID AND RECEIVED block.
+
+    Lines arrive in order after the 'SDNUF' header, before the 'devieceR' footer.
+    Each transaction is a 7-line block:
+      [0] reversed_amount  e.g. '00.003,1$' => $1,300.00
+      [1] TISOPED (DEPOSIT) or TNEMESRUBSID (DISBURSEMENT)
+      [2] HCA
+      [3] code (M or C)
+      [4] reversed_date  e.g. '61/41/70' => 07/14/16
+      [5] HCA
+      [6] account_number
+    The final line(s) are the section total — not a transaction.
+    """
+    transactions = []
+    i = 0
+    while i + 6 < len(lines):
+        amount_rev = lines[i]
+        txn_type   = lines[i + 1]
+        hca1       = lines[i + 2]
+        # lines[i+3] = code (M/C), skip
+        date_rev   = lines[i + 4]
+        hca2       = lines[i + 5]
+        # lines[i+6] = account number, skip
+
+        if hca1 != "HCA" or hca2 != "HCA":
+            i += 1
+            continue
+        if txn_type not in ("TISOPED", "TNEMESRUBSID"):
+            i += 1
+            continue
+
+        amount = parse_amount(amount_rev[::-1])
+        date_str = parse_date(date_rev[::-1])
+
+        if amount is not None and amount > 0 and date_str:
+            if txn_type == "TISOPED":
+                transactions.append({"date": date_str, "amount": amount, "kind": "ACH Deposit"})
+            else:
+                transactions.append({"date": date_str, "amount": -amount, "kind": "ACH Withdrawal"})
+
+        i += 7
+
+    return transactions
+
+
+def is_mirrored_text(full_text: str) -> bool:
+    # Mirrored Apex PDFs contain these reversed strings
+    return "SDNUF" in full_text and "HCA" in full_text and ("TISOPED" in full_text or "TNEMESRUBSID" in full_text)
+
+
+def extract_mirrored_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
+    """Extract from mirrored Apex PDFs using line-by-line text extraction."""
+    transactions = []
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num, page in enumerate(pdf.pages, 1):
+            text = page.extract_text() or ""
+            lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+            in_funds = False
+            funds_lines: list[str] = []
+
+            for line in lines:
+                if debug:
+                    print(f"  p{page_num}: {line!r}", file=sys.stderr)
+
+                if not in_funds:
+                    if line == "SDNUF":
+                        in_funds = True
+                        funds_lines = []
+                elif line.startswith("devieceR") or line == "devieceR":
+                    found = parse_mirrored_funds_section(funds_lines)
+                    if debug and found:
+                        print(f"  [mirrored] p{page_num}: parsed {len(found)} transaction(s)", file=sys.stderr)
+                    transactions.extend(found)
+                    in_funds = False
+                else:
+                    funds_lines.append(line)
+
+    return transactions
+
+
 def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
+    # Scan full document to detect mirrored format (FUNDS section may be deep in the PDF)
+    with pdfplumber.open(pdf_path) as pdf:
+        sample = "\n".join(
+            (p.extract_text() or "") for p in pdf.pages
+        )
+
+    if is_mirrored_text(sample):
+        if debug:
+            print("  [detected mirrored Apex format]", file=sys.stderr)
+        return extract_mirrored_transactions(pdf_path, debug=debug)
+
+    # Normal (non-mirrored) extraction
     transactions = []
     in_funds_section = False
 
@@ -135,7 +242,6 @@ def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
 
                 joined = " ".join(words)
 
-                # Track old-format FUNDS section boundaries
                 if "FUNDS PAID AND RECEIVED" in joined:
                     in_funds_section = True
                     continue
@@ -146,13 +252,11 @@ def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
                 if words[0] != "ACH":
                     continue
 
-                # New format: works anywhere in the document
                 result = try_parse_new_format(words)
                 if result:
                     transactions.append(result)
                     continue
 
-                # Old format: only valid inside the FUNDS section
                 if in_funds_section:
                     result = try_parse_old_format(words)
                     if result:
