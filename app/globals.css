@@ -937,6 +937,29 @@ tr.row-leaving {
   color: var(--green);
 }
 
+.annual-institution-subtotal th {
+  padding-left: 28px;
+}
+
+.annual-institution-subtotal th,
+.annual-institution-subtotal td {
+  background: #e3e0d6;
+  color: #3a3f3c;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.annual-institution-subtotal .positive-cell,
+.annual-institution-subtotal .money-cell {
+  color: var(--green);
+}
+
+.annual-institution-subtotal .negative-cell {
+  color: var(--red);
+}
+
 .annual-total-row th,
 .annual-total-row td {
   border-top: 2px solid var(--ink);

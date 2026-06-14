@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { currency, getAccountsWithBalances, getAnnualReturnBlocks, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 
@@ -223,88 +224,134 @@ export default async function AnnualReturnsPage() {
           </details>
         </article>
 
-        {annualBlocks.map((block) => (
-          <article key={block.snapshot.id} className="panel annual-block">
-            <div className="annual-block-header">
-              <div>
-                <p>Dec 31 Year-End</p>
-                <h2>{block.year}</h2>
-              </div>
-              <div className="annual-summary-grid">
-                <div>
-                  <span>Invested</span>
-                  <strong>{currency(block.totalInvested)}</strong>
-                </div>
-                <div>
-                  <span>Growth</span>
-                  <strong className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                    {currency(block.totalGrowthDollars)}
-                  </strong>
-                </div>
-                <div>
-                  <span>Return</span>
-                  <strong className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                    {percent(block.totalGrowthPercent)}
-                  </strong>
-                </div>
-                <div>
-                  <span>Balance</span>
-                  <strong>{currency(block.totalDec31Balance)}</strong>
-                </div>
-              </div>
-            </div>
+        {annualBlocks.map((block) => {
+          type RowGroup = {
+            institution: string;
+            rows: typeof block.rows;
+            subtotal?: { invested: number; balance: number; growth: number; growthPercent: number | undefined };
+          };
 
-            <details className="annual-account-dropdown">
-              <summary>
-                <span>Accounts and brokerages</span>
-                <strong>{block.rows.length} rows</strong>
-              </summary>
+          const rowGroups: RowGroup[] = [];
+          for (const row of block.rows) {
+            const last = rowGroups[rowGroups.length - 1];
+            if (last && last.institution === row.account.institution) {
+              last.rows.push(row);
+            } else {
+              rowGroups.push({ institution: row.account.institution, rows: [row] });
+            }
+          }
+          for (const group of rowGroups) {
+            if (group.rows.length > 1) {
+              const inv = group.rows.reduce((s, r) => s + r.investedTotal, 0);
+              const bal = group.rows.reduce((s, r) => s + r.dec31Balance, 0);
+              const gro = group.rows.reduce((s, r) => s + (r.growthDollars ?? 0), 0);
+              const prevBal = group.rows.reduce((s, r) => s + (r.dec31Balance - r.investedTotal - (r.growthDollars ?? 0)), 0);
+              const base = prevBal !== 0 ? prevBal : inv;
+              group.subtotal = { invested: inv, balance: bal, growth: gro, growthPercent: base === 0 ? undefined : (gro / base) * 100 };
+            }
+          }
 
-              <div className="annual-table-wrap">
-                <table className="annual-table">
-                  <thead>
-                    <tr>
-                      <th>Institution</th>
-                      <th>Account</th>
-                      <th>Total Invested</th>
-                      <th>Total Growth (%)</th>
-                      <th>Total Growth ($)</th>
-                      <th>Dec 31st Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {block.rows.map((row) => (
-                      <tr key={row.account.id}>
-                        <th scope="row">{row.account.institution}</th>
-                        <td>{row.account.subaccountName ?? row.account.name}</td>
-                        <td className="money-cell">{currency(row.investedTotal)}</td>
-                        <td className={row.growthPercent !== undefined && row.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                          {row.growthPercent === undefined ? "0.000%" : percent(row.growthPercent)}
-                        </td>
-                        <td className={row.growthDollars !== undefined && row.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                          {currency(row.growthDollars ?? 0)}
-                        </td>
-                        <td className="money-cell">{currency(row.dec31Balance)}</td>
+          return (
+            <article key={block.snapshot.id} className="panel annual-block">
+              <div className="annual-block-header">
+                <div>
+                  <p>Dec 31 Year-End</p>
+                  <h2>{block.year}</h2>
+                </div>
+                <div className="annual-summary-grid">
+                  <div>
+                    <span>Invested</span>
+                    <strong>{currency(block.totalInvested)}</strong>
+                  </div>
+                  <div>
+                    <span>Growth</span>
+                    <strong className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
+                      {currency(block.totalGrowthDollars)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Return</span>
+                    <strong className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                      {percent(block.totalGrowthPercent)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Balance</span>
+                    <strong>{currency(block.totalDec31Balance)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <details className="annual-account-dropdown">
+                <summary>
+                  <span>Accounts and brokerages</span>
+                  <strong>{block.rows.length} rows</strong>
+                </summary>
+
+                <div className="annual-table-wrap">
+                  <table className="annual-table">
+                    <thead>
+                      <tr>
+                        <th>Institution</th>
+                        <th>Account</th>
+                        <th>Total Invested</th>
+                        <th>Total Growth (%)</th>
+                        <th>Total Growth ($)</th>
+                        <th>Dec 31st Balance</th>
                       </tr>
-                    ))}
-                    <tr className="annual-total-row">
-                      <th scope="row">Total</th>
-                      <td />
-                      <td>{currency(block.totalInvested)}</td>
-                      <td className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                        {percent(block.totalGrowthPercent)}
-                      </td>
-                      <td className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                        {currency(block.totalGrowthDollars)}
-                      </td>
-                      <td>{currency(block.totalDec31Balance)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          </article>
-        ))}
+                    </thead>
+                    <tbody>
+                      {rowGroups.map((group) => (
+                        <Fragment key={group.institution}>
+                          {group.rows.map((row) => (
+                            <tr key={row.account.id}>
+                              <th scope="row">{row.account.institution}</th>
+                              <td>{row.account.subaccountName ?? row.account.name}</td>
+                              <td className="money-cell">{currency(row.investedTotal)}</td>
+                              <td className={row.growthPercent !== undefined && row.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                                {row.growthPercent === undefined ? "0.000%" : percent(row.growthPercent)}
+                              </td>
+                              <td className={row.growthDollars !== undefined && row.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
+                                {currency(row.growthDollars ?? 0)}
+                              </td>
+                              <td className="money-cell">{currency(row.dec31Balance)}</td>
+                            </tr>
+                          ))}
+                          {group.subtotal && (
+                            <tr className="annual-institution-subtotal">
+                              <th scope="row">{group.institution}</th>
+                              <td>Total</td>
+                              <td>{currency(group.subtotal.invested)}</td>
+                              <td className={group.subtotal.growthPercent !== undefined && group.subtotal.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                                {group.subtotal.growthPercent === undefined ? "—" : percent(group.subtotal.growthPercent)}
+                              </td>
+                              <td className={group.subtotal.growth < 0 ? "negative-cell" : "positive-cell"}>
+                                {currency(group.subtotal.growth)}
+                              </td>
+                              <td>{currency(group.subtotal.balance)}</td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                      <tr className="annual-total-row">
+                        <th scope="row">Total</th>
+                        <td />
+                        <td>{currency(block.totalInvested)}</td>
+                        <td className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                          {percent(block.totalGrowthPercent)}
+                        </td>
+                        <td className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
+                          {currency(block.totalGrowthDollars)}
+                        </td>
+                        <td>{currency(block.totalDec31Balance)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </article>
+          );
+        })}
       </section>
     </div>
   );
