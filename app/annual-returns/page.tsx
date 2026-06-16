@@ -65,12 +65,9 @@ export default async function AnnualReturnsPage() {
                 <strong className={allTimeGrowth < 0 ? "negative-cell" : "positive-cell"}>
                   {currency(allTimeGrowth)}
                 </strong>
-              </div>
-              <div>
-                <span>Return</span>
-                <strong className={allTimeGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                <small className={allTimeGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                   {percent(allTimeGrowthPercent)}
-                </strong>
+                </small>
               </div>
               <div>
                 <span>Balance</span>
@@ -148,12 +145,9 @@ export default async function AnnualReturnsPage() {
                 <strong className={inProgressGrowth < 0 ? "negative-cell" : "positive-cell"}>
                   {currency(inProgressGrowth)}
                 </strong>
-              </div>
-              <div>
-                <span>Return</span>
-                <strong className={inProgressGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                <small className={inProgressGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                   {percent(inProgressGrowthPercent)}
-                </strong>
+                </small>
               </div>
               <div>
                 <span>Balance</span>
@@ -268,12 +262,9 @@ export default async function AnnualReturnsPage() {
                     <strong className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
                       {currency(block.totalGrowthDollars)}
                     </strong>
-                  </div>
-                  <div>
-                    <span>Return</span>
-                    <strong className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                    <small className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                       {percent(block.totalGrowthPercent)}
-                    </strong>
+                    </small>
                   </div>
                   <div>
                     <span>Balance</span>

@@ -763,6 +763,7 @@ tr.row-leaving {
 .annual-block {
   display: grid;
   gap: 18px;
+  width: fit-content;
 }
 
 .annual-block-header {
@@ -789,8 +790,8 @@ tr.row-leaving {
 }
 
 .annual-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -798,7 +799,8 @@ tr.row-leaving {
   display: grid;
   gap: 6px;
   min-height: 84px;
-  align-content: space-between;
+  min-width: 120px;
+  align-content: start;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -817,9 +819,16 @@ tr.row-leaving {
   font-size: 1.08rem;
 }
 
+.annual-summary-grid small {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .annual-account-dropdown {
   display: grid;
   overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-2);
@@ -868,27 +877,31 @@ tr.row-leaving {
 }
 
 .annual-account-dropdown[open] .annual-table-wrap {
-  margin: 0 10px 10px;
+  margin: 0 6px 6px;
   background: #fbfaf7;
 }
 
 .annual-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .annual-table {
-  min-width: 820px;
+  width: auto;
   box-shadow: none;
 }
 
 .annual-table th,
 .annual-table td {
-  padding: 11px 12px;
+  padding: 9px 12px 9px 0;
   border-right: 0;
   border-bottom: 1px solid var(--line);
   text-align: right;
+}
+
+.annual-table th {
+  text-align: left;
 }
 
 .annual-table thead th {
@@ -928,12 +941,14 @@ tr.row-leaving {
   border-right: 0;
 }
 
-.annual-table .negative-cell {
+.annual-table .negative-cell,
+.annual-summary-grid .negative-cell {
   color: var(--red);
 }
 
 .annual-table .positive-cell,
-.annual-table .money-cell {
+.annual-table .money-cell,
+.annual-summary-grid .positive-cell {
   color: var(--green);
 }
 
@@ -943,7 +958,7 @@ tr.row-leaving {
 
 .annual-institution-subtotal th,
 .annual-institution-subtotal td {
-  background: #e3e0d6;
+  background: #f5f3eb;
   color: #3a3f3c;
   font-size: 0.85rem;
   font-weight: 700;

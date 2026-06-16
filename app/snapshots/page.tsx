@@ -1,7 +1,7 @@
 import { ActionButton } from "@/components/ActionButton";
-import { currency, dateLabel, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
-import { deleteSnapshot, takeSnapshot, takeYearEndSnapshot } from "./actions";
+import { takeSnapshot, takeYearEndSnapshot } from "./actions";
+import { SnapshotsTable } from "./SnapshotsTable";
 
 export const dynamic = "force-dynamic";
 
@@ -44,45 +44,7 @@ export default async function SnapshotsPage() {
       </section>
 
       <section className="panel">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Label</th>
-                <th>Kind</th>
-                <th>Invested</th>
-                <th>Net Worth</th>
-                <th>Growth</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((snapshot) => (
-                <tr key={snapshot.id}>
-                  <td>{dateLabel(snapshot.snapshotDate)}</td>
-                  <td>
-                    <strong>{snapshot.label}</strong>
-                  </td>
-                  <td>
-                    <span className="tag">{snapshot.kind.replace("_", " ")}</span>
-                  </td>
-                  <td>{currency(snapshot.investedTotal)}</td>
-                  <td>{currency(snapshot.netWorthTotal)}</td>
-                  <td>
-                    {currency(snapshot.growthTotal)}
-                    <small>{percent((snapshot.growthTotal / snapshot.investedTotal) * 100)}</small>
-                  </td>
-                  <td>
-                    <form action={deleteSnapshot.bind(null, snapshot.id)}>
-                      <button className="delete-button" type="submit">Delete</button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SnapshotsTable rows={rows} />
       </section>
     </div>
   );
