@@ -94,22 +94,51 @@ export default async function AnnualReturnsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {accountRows
-                    .filter((a) => a.latestBalance !== 0 || a.investedTotal !== 0)
-                    .map((account) => (
-                      <tr key={account.id}>
-                        <th scope="row">{account.institution}</th>
-                        <td>{account.subaccountName ?? account.name}</td>
-                        <td className="money-cell">{currency(account.investedTotal)}</td>
-                        <td className={account.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                          {percent(account.growthPercent)}
-                        </td>
-                        <td className={account.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                          {currency(account.growthDollars)}
-                        </td>
-                        <td className="money-cell">{currency(account.latestBalance)}</td>
-                      </tr>
-                    ))}
+                  {(() => {
+                    const filtered = accountRows.filter((a) => a.latestBalance !== 0 || a.investedTotal !== 0);
+                    const groups: { institution: string; accounts: typeof filtered }[] = [];
+                    for (const a of filtered) {
+                      const last = groups[groups.length - 1];
+                      if (last && last.institution === a.institution) last.accounts.push(a);
+                      else groups.push({ institution: a.institution, accounts: [a] });
+                    }
+                    return groups.map((group) => {
+                      const inv = group.accounts.reduce((s, a) => s + a.investedTotal, 0);
+                      const bal = group.accounts.reduce((s, a) => s + a.latestBalance, 0);
+                      const gro = bal - inv;
+                      const groP = inv === 0 ? undefined : (gro / inv) * 100;
+                      return (
+                        <Fragment key={group.institution}>
+                          {group.accounts.map((account) => (
+                            <tr key={account.id}>
+                              <th scope="row">{account.institution}</th>
+                              <td>{account.subaccountName ?? account.name}</td>
+                              <td className="money-cell">{currency(account.investedTotal)}</td>
+                              <td className={account.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                                {percent(account.growthPercent)}
+                              </td>
+                              <td className={account.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
+                                {currency(account.growthDollars)}
+                              </td>
+                              <td className="money-cell">{currency(account.latestBalance)}</td>
+                            </tr>
+                          ))}
+                          {group.accounts.length > 1 && (
+                            <tr className="annual-institution-subtotal">
+                              <th scope="row">{group.institution}</th>
+                              <td>Total</td>
+                              <td>{currency(inv)}</td>
+                              <td className={groP !== undefined && groP < 0 ? "negative-cell" : "positive-cell"}>
+                                {groP === undefined ? "—" : percent(groP)}
+                              </td>
+                              <td className={gro < 0 ? "negative-cell" : "positive-cell"}>{currency(gro)}</td>
+                              <td>{currency(bal)}</td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    });
+                  })()}
                   <tr className="annual-total-row">
                     <th scope="row">Total</th>
                     <td />
@@ -175,30 +204,66 @@ export default async function AnnualReturnsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {accountRows
-                    .filter((a) => (currentYearContribsByAccount[a.id] ?? 0) !== 0 || a.latestBalance !== 0)
-                    .map((account) => {
-                      const acctInvested = currentYearContribsByAccount[account.id] ?? 0;
-                      const prevAcct = prevBalanceByAccount.get(account.id);
-                      const prevDec31Balance = prevAcct?.balance ?? 0;
-                      const acctGrowth = account.latestBalance - acctInvested - prevDec31Balance;
-                      const acctGrowthBase = prevDec31Balance !== 0 ? prevDec31Balance : acctInvested;
-                      const acctGrowthPercent = acctGrowthBase === 0 ? undefined : (acctGrowth / acctGrowthBase) * 100;
+                  {(() => {
+                    type InProgressRow = {
+                      account: (typeof accountRows)[number];
+                      acctInvested: number;
+                      prevDec31Balance: number;
+                      acctGrowth: number;
+                      acctGrowthPercent: number | undefined;
+                    };
+                    const filtered: InProgressRow[] = accountRows
+                      .filter((a) => (currentYearContribsByAccount[a.id] ?? 0) !== 0 || a.latestBalance !== 0)
+                      .map((account) => {
+                        const acctInvested = currentYearContribsByAccount[account.id] ?? 0;
+                        const prevDec31Balance = prevBalanceByAccount.get(account.id)?.balance ?? 0;
+                        const acctGrowth = account.latestBalance - acctInvested - prevDec31Balance;
+                        const base = prevDec31Balance !== 0 ? prevDec31Balance : acctInvested;
+                        return { account, acctInvested, prevDec31Balance, acctGrowth, acctGrowthPercent: base === 0 ? undefined : (acctGrowth / base) * 100 };
+                      });
+                    const groups: { institution: string; rows: InProgressRow[] }[] = [];
+                    for (const r of filtered) {
+                      const last = groups[groups.length - 1];
+                      if (last && last.institution === r.account.institution) last.rows.push(r);
+                      else groups.push({ institution: r.account.institution, rows: [r] });
+                    }
+                    return groups.map((group) => {
+                      const inv = group.rows.reduce((s, r) => s + r.acctInvested, 0);
+                      const bal = group.rows.reduce((s, r) => s + r.account.latestBalance, 0);
+                      const gro = group.rows.reduce((s, r) => s + r.acctGrowth, 0);
+                      const prevBal = group.rows.reduce((s, r) => s + r.prevDec31Balance, 0);
+                      const base = prevBal !== 0 ? prevBal : inv;
+                      const groP = base === 0 ? undefined : (gro / base) * 100;
                       return (
-                        <tr key={account.id}>
-                          <th scope="row">{account.institution}</th>
-                          <td>{account.subaccountName ?? account.name}</td>
-                          <td className="money-cell">{currency(acctInvested)}</td>
-                          <td className={acctGrowthPercent !== undefined && acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
-                            {acctGrowthPercent === undefined ? "—" : percent(acctGrowthPercent)}
-                          </td>
-                          <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                            {currency(acctGrowth)}
-                          </td>
-                          <td className="money-cell">{currency(account.latestBalance)}</td>
-                        </tr>
+                        <Fragment key={group.institution}>
+                          {group.rows.map(({ account, acctInvested, acctGrowth, acctGrowthPercent }) => (
+                            <tr key={account.id}>
+                              <th scope="row">{account.institution}</th>
+                              <td>{account.subaccountName ?? account.name}</td>
+                              <td className="money-cell">{currency(acctInvested)}</td>
+                              <td className={acctGrowthPercent !== undefined && acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
+                                {acctGrowthPercent === undefined ? "—" : percent(acctGrowthPercent)}
+                              </td>
+                              <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>{currency(acctGrowth)}</td>
+                              <td className="money-cell">{currency(account.latestBalance)}</td>
+                            </tr>
+                          ))}
+                          {group.rows.length > 1 && (
+                            <tr className="annual-institution-subtotal">
+                              <th scope="row">{group.institution}</th>
+                              <td>Total</td>
+                              <td>{currency(inv)}</td>
+                              <td className={groP !== undefined && groP < 0 ? "negative-cell" : "positive-cell"}>
+                                {groP === undefined ? "—" : percent(groP)}
+                              </td>
+                              <td className={gro < 0 ? "negative-cell" : "positive-cell"}>{currency(gro)}</td>
+                              <td>{currency(bal)}</td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
-                    })}
+                    });
+                  })()}
 
                   <tr className="annual-total-row">
                     <th scope="row">Total</th>
