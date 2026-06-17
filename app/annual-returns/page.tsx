@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { currency, getAccountsWithBalances, getAnnualReturnBlocks, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
+import { institutionAtYear } from "@/lib/account-renames";
 
 export const dynamic = "force-dynamic";
 
@@ -111,7 +112,7 @@ export default async function AnnualReturnsPage() {
                         <Fragment key={group.institution}>
                           {group.accounts.map((account) => (
                             <tr key={account.id}>
-                              <th scope="row">{account.institution}</th>
+                              <th scope="row">{institutionAtYear(account.id, account.institution, CURRENT_YEAR)}</th>
                               <td>{account.subaccountName ?? account.name}</td>
                               <td className="money-cell">{currency(account.investedTotal)}</td>
                               <td className={account.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
@@ -125,7 +126,7 @@ export default async function AnnualReturnsPage() {
                           ))}
                           {group.accounts.length > 1 && (
                             <tr className="annual-institution-subtotal">
-                              <th scope="row">{group.institution}</th>
+                              <th scope="row">{institutionAtYear(group.accounts[0].id, group.institution, CURRENT_YEAR)}</th>
                               <td>Total</td>
                               <td>{currency(inv)}</td>
                               <td className={groP !== undefined && groP < 0 ? "negative-cell" : "positive-cell"}>
@@ -238,7 +239,7 @@ export default async function AnnualReturnsPage() {
                         <Fragment key={group.institution}>
                           {group.rows.map(({ account, acctInvested, acctGrowth, acctGrowthPercent }) => (
                             <tr key={account.id}>
-                              <th scope="row">{account.institution}</th>
+                              <th scope="row">{institutionAtYear(account.id, account.institution, CURRENT_YEAR)}</th>
                               <td>{account.subaccountName ?? account.name}</td>
                               <td className="money-cell">{currency(acctInvested)}</td>
                               <td className={acctGrowthPercent !== undefined && acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
@@ -250,7 +251,7 @@ export default async function AnnualReturnsPage() {
                           ))}
                           {group.rows.length > 1 && (
                             <tr className="annual-institution-subtotal">
-                              <th scope="row">{group.institution}</th>
+                              <th scope="row">{institutionAtYear(group.rows[0].account.id, group.institution, CURRENT_YEAR)}</th>
                               <td>Total</td>
                               <td>{currency(inv)}</td>
                               <td className={groP !== undefined && groP < 0 ? "negative-cell" : "positive-cell"}>
@@ -361,7 +362,7 @@ export default async function AnnualReturnsPage() {
                         <Fragment key={group.institution}>
                           {group.rows.map((row) => (
                             <tr key={row.account.id}>
-                              <th scope="row">{row.account.institution}</th>
+                              <th scope="row">{institutionAtYear(row.account.id, row.account.institution, block.year)}</th>
                               <td>{row.account.subaccountName ?? row.account.name}</td>
                               <td className="money-cell">{currency(row.investedTotal)}</td>
                               <td className={row.growthPercent !== undefined && row.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
@@ -375,7 +376,7 @@ export default async function AnnualReturnsPage() {
                           ))}
                           {group.subtotal && (
                             <tr className="annual-institution-subtotal">
-                              <th scope="row">{group.institution}</th>
+                              <th scope="row">{institutionAtYear(group.rows[0].account.id, group.institution, block.year)}</th>
                               <td>Total</td>
                               <td>{currency(group.subtotal.invested)}</td>
                               <td className={group.subtotal.growthPercent !== undefined && group.subtotal.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
