@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { currency, dateLabel } from "@/lib/calculations";
+import { currencyPrecise, dateLabel } from "@/lib/calculations";
 import { institutionAtYear } from "@/lib/account-renames";
 import type { Account, Contribution } from "@/lib/mock-data";
 import { deleteContributionById } from "./actions";
@@ -155,7 +155,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
         </select>
 
         {isFiltered && (
-          <span className="filter-total">{currency(filteredTotal)}</span>
+          <span className="filter-total">{currencyPrecise(filteredTotal)}</span>
         )}
 
         {isFiltered && (
@@ -193,7 +193,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
                   : displayInstitution
                 : "Unknown";
               const mmddyyyy = `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}/${year}`;
-              const label = `${mmddyyyy} · ${accountName} · ${currency(contribution.amount)}`;
+              const label = `${mmddyyyy} · ${accountName} · ${currencyPrecise(contribution.amount)}`;
               return (
                 <tr key={contribution.id} className={contribution.id === rowLeavingId ? "row-leaving" : undefined}>
                   <td>{dateLabel(contribution.contributionDate)}</td>
@@ -201,7 +201,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
                     <strong>{displayInstitution}</strong>
                     <small>{account?.subaccountName ?? account?.name}</small>
                   </td>
-                  <td>{currency(contribution.amount)}</td>
+                  <td>{currencyPrecise(contribution.amount)}</td>
                   <td>{contribution.note}</td>
                   <td className="table-action-cell">
                     <button

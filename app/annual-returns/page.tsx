@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { currency, getAccountsWithBalances, getAnnualReturnBlocks, percent } from "@/lib/calculations";
+import { currencyPrecise, getAccountsWithBalances, getAnnualReturnBlocks, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 import { institutionAtYear } from "@/lib/account-renames";
 
@@ -59,12 +59,12 @@ export default async function AnnualReturnsPage() {
             <div className="annual-summary-grid">
               <div>
                 <span>Invested</span>
-                <strong>{currency(allTimeInvested)}</strong>
+                <strong>{currencyPrecise(allTimeInvested)}</strong>
               </div>
               <div>
                 <span>Growth</span>
                 <strong className={allTimeGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                  {currency(allTimeGrowth)}
+                  {currencyPrecise(allTimeGrowth)}
                 </strong>
                 <small className={allTimeGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                   {percent(allTimeGrowthPercent)}
@@ -72,7 +72,7 @@ export default async function AnnualReturnsPage() {
               </div>
               <div>
                 <span>Balance</span>
-                <strong>{currency(currentYearNetWorth)}</strong>
+                <strong>{currencyPrecise(currentYearNetWorth)}</strong>
               </div>
             </div>
           </div>
@@ -114,26 +114,26 @@ export default async function AnnualReturnsPage() {
                             <tr key={account.id}>
                               <th scope="row">{institutionAtYear(account.id, account.institution, CURRENT_YEAR)}</th>
                               <td>{account.subaccountName ?? account.name}</td>
-                              <td className="money-cell">{currency(account.investedTotal)}</td>
+                              <td className="money-cell">{currencyPrecise(account.investedTotal)}</td>
                               <td className={account.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
                                 {percent(account.growthPercent)}
                               </td>
                               <td className={account.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                                {currency(account.growthDollars)}
+                                {currencyPrecise(account.growthDollars)}
                               </td>
-                              <td className="money-cell">{currency(account.latestBalance)}</td>
+                              <td className="money-cell">{currencyPrecise(account.latestBalance)}</td>
                             </tr>
                           ))}
                           {group.accounts.length > 1 && (
                             <tr className="annual-institution-subtotal">
                               <th scope="row">{institutionAtYear(group.accounts[0].id, group.institution, CURRENT_YEAR)}</th>
                               <td>Total</td>
-                              <td>{currency(inv)}</td>
+                              <td>{currencyPrecise(inv)}</td>
                               <td className={groP !== undefined && groP < 0 ? "negative-cell" : "positive-cell"}>
                                 {groP === undefined ? "—" : percent(groP)}
                               </td>
-                              <td className={gro < 0 ? "negative-cell" : "positive-cell"}>{currency(gro)}</td>
-                              <td>{currency(bal)}</td>
+                              <td className={gro < 0 ? "negative-cell" : "positive-cell"}>{currencyPrecise(gro)}</td>
+                              <td>{currencyPrecise(bal)}</td>
                             </tr>
                           )}
                         </Fragment>
@@ -143,14 +143,14 @@ export default async function AnnualReturnsPage() {
                   <tr className="annual-total-row">
                     <th scope="row">Total</th>
                     <td />
-                    <td>{currency(allTimeInvested)}</td>
+                    <td>{currencyPrecise(allTimeInvested)}</td>
                     <td className={allTimeGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                       {percent(allTimeGrowthPercent)}
                     </td>
                     <td className={allTimeGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                      {currency(allTimeGrowth)}
+                      {currencyPrecise(allTimeGrowth)}
                     </td>
-                    <td>{currency(currentYearNetWorth)}</td>
+                    <td>{currencyPrecise(currentYearNetWorth)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -168,12 +168,12 @@ export default async function AnnualReturnsPage() {
             <div className="annual-summary-grid">
               <div>
                 <span>Invested</span>
-                <strong>{currency(currentYearInvested)}</strong>
+                <strong>{currencyPrecise(currentYearInvested)}</strong>
               </div>
               <div>
                 <span>Growth</span>
                 <strong className={inProgressGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                  {currency(inProgressGrowth)}
+                  {currencyPrecise(inProgressGrowth)}
                 </strong>
                 <small className={inProgressGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                   {percent(inProgressGrowthPercent)}
@@ -181,7 +181,7 @@ export default async function AnnualReturnsPage() {
               </div>
               <div>
                 <span>Balance</span>
-                <strong>{currency(currentYearNetWorth)}</strong>
+                <strong>{currencyPrecise(currentYearNetWorth)}</strong>
               </div>
             </div>
           </div>
@@ -241,24 +241,24 @@ export default async function AnnualReturnsPage() {
                             <tr key={account.id}>
                               <th scope="row">{institutionAtYear(account.id, account.institution, CURRENT_YEAR)}</th>
                               <td>{account.subaccountName ?? account.name}</td>
-                              <td className="money-cell">{currency(acctInvested)}</td>
+                              <td className="money-cell">{currencyPrecise(acctInvested)}</td>
                               <td className={acctGrowthPercent !== undefined && acctGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                                 {acctGrowthPercent === undefined ? "—" : percent(acctGrowthPercent)}
                               </td>
-                              <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>{currency(acctGrowth)}</td>
-                              <td className="money-cell">{currency(account.latestBalance)}</td>
+                              <td className={acctGrowth < 0 ? "negative-cell" : "positive-cell"}>{currencyPrecise(acctGrowth)}</td>
+                              <td className="money-cell">{currencyPrecise(account.latestBalance)}</td>
                             </tr>
                           ))}
                           {group.rows.length > 1 && (
                             <tr className="annual-institution-subtotal">
                               <th scope="row">{institutionAtYear(group.rows[0].account.id, group.institution, CURRENT_YEAR)}</th>
                               <td>Total</td>
-                              <td>{currency(inv)}</td>
+                              <td>{currencyPrecise(inv)}</td>
                               <td className={groP !== undefined && groP < 0 ? "negative-cell" : "positive-cell"}>
                                 {groP === undefined ? "—" : percent(groP)}
                               </td>
-                              <td className={gro < 0 ? "negative-cell" : "positive-cell"}>{currency(gro)}</td>
-                              <td>{currency(bal)}</td>
+                              <td className={gro < 0 ? "negative-cell" : "positive-cell"}>{currencyPrecise(gro)}</td>
+                              <td>{currencyPrecise(bal)}</td>
                             </tr>
                           )}
                         </Fragment>
@@ -269,14 +269,14 @@ export default async function AnnualReturnsPage() {
                   <tr className="annual-total-row">
                     <th scope="row">Total</th>
                     <td />
-                    <td>{currency(currentYearInvested)}</td>
+                    <td>{currencyPrecise(currentYearInvested)}</td>
                     <td className={inProgressGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                       {percent(inProgressGrowthPercent)}
                     </td>
                     <td className={inProgressGrowth < 0 ? "negative-cell" : "positive-cell"}>
-                      {currency(inProgressGrowth)}
+                      {currencyPrecise(inProgressGrowth)}
                     </td>
-                    <td>{currency(currentYearNetWorth)}</td>
+                    <td>{currencyPrecise(currentYearNetWorth)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -321,12 +321,12 @@ export default async function AnnualReturnsPage() {
                 <div className="annual-summary-grid">
                   <div>
                     <span>Invested</span>
-                    <strong>{currency(block.totalInvested)}</strong>
+                    <strong>{currencyPrecise(block.totalInvested)}</strong>
                   </div>
                   <div>
                     <span>Growth</span>
                     <strong className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                      {currency(block.totalGrowthDollars)}
+                      {currencyPrecise(block.totalGrowthDollars)}
                     </strong>
                     <small className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                       {percent(block.totalGrowthPercent)}
@@ -334,7 +334,7 @@ export default async function AnnualReturnsPage() {
                   </div>
                   <div>
                     <span>Balance</span>
-                    <strong>{currency(block.totalDec31Balance)}</strong>
+                    <strong>{currencyPrecise(block.totalDec31Balance)}</strong>
                   </div>
                 </div>
               </div>
@@ -364,28 +364,28 @@ export default async function AnnualReturnsPage() {
                             <tr key={row.account.id}>
                               <th scope="row">{institutionAtYear(row.account.id, row.account.institution, block.year)}</th>
                               <td>{row.account.subaccountName ?? row.account.name}</td>
-                              <td className="money-cell">{currency(row.investedTotal)}</td>
+                              <td className="money-cell">{currencyPrecise(row.investedTotal)}</td>
                               <td className={row.growthPercent !== undefined && row.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
                                 {row.growthPercent === undefined ? "0.000%" : percent(row.growthPercent)}
                               </td>
                               <td className={row.growthDollars !== undefined && row.growthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                                {currency(row.growthDollars ?? 0)}
+                                {currencyPrecise(row.growthDollars ?? 0)}
                               </td>
-                              <td className="money-cell">{currency(row.dec31Balance)}</td>
+                              <td className="money-cell">{currencyPrecise(row.dec31Balance)}</td>
                             </tr>
                           ))}
                           {group.subtotal && (
                             <tr className="annual-institution-subtotal">
                               <th scope="row">{institutionAtYear(group.rows[0].account.id, group.institution, block.year)}</th>
                               <td>Total</td>
-                              <td>{currency(group.subtotal.invested)}</td>
+                              <td>{currencyPrecise(group.subtotal.invested)}</td>
                               <td className={group.subtotal.growthPercent !== undefined && group.subtotal.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
                                 {group.subtotal.growthPercent === undefined ? "—" : percent(group.subtotal.growthPercent)}
                               </td>
                               <td className={group.subtotal.growth < 0 ? "negative-cell" : "positive-cell"}>
-                                {currency(group.subtotal.growth)}
+                                {currencyPrecise(group.subtotal.growth)}
                               </td>
-                              <td>{currency(group.subtotal.balance)}</td>
+                              <td>{currencyPrecise(group.subtotal.balance)}</td>
                             </tr>
                           )}
                         </Fragment>
@@ -393,14 +393,14 @@ export default async function AnnualReturnsPage() {
                       <tr className="annual-total-row">
                         <th scope="row">Total</th>
                         <td />
-                        <td>{currency(block.totalInvested)}</td>
+                        <td>{currencyPrecise(block.totalInvested)}</td>
                         <td className={block.totalGrowthPercent < 0 ? "negative-cell" : "positive-cell"}>
                           {percent(block.totalGrowthPercent)}
                         </td>
                         <td className={block.totalGrowthDollars < 0 ? "negative-cell" : "positive-cell"}>
-                          {currency(block.totalGrowthDollars)}
+                          {currencyPrecise(block.totalGrowthDollars)}
                         </td>
-                        <td>{currency(block.totalDec31Balance)}</td>
+                        <td>{currencyPrecise(block.totalDec31Balance)}</td>
                       </tr>
                     </tbody>
                   </table>

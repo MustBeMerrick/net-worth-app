@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { currency, dateLabel, percent } from "@/lib/calculations";
+import { currencyPrecise, dateLabel, percent } from "@/lib/calculations";
 import type { Snapshot } from "@/lib/mock-data";
 import { deleteSnapshot } from "./actions";
 
@@ -94,10 +94,10 @@ export function SnapshotsTable({ rows }: Props) {
                 <td>{dateLabel(snapshot.snapshotDate)}</td>
                 <td><strong>{snapshot.label}</strong></td>
                 <td><span className="tag">{snapshot.kind.replace("_", " ")}</span></td>
-                <td>{currency(snapshot.investedTotal)}</td>
-                <td>{currency(snapshot.netWorthTotal)}</td>
+                <td>{currencyPrecise(snapshot.investedTotal)}</td>
+                <td>{currencyPrecise(snapshot.netWorthTotal)}</td>
                 <td>
-                  {currency(snapshot.growthTotal)}
+                  {currencyPrecise(snapshot.growthTotal)}
                   <small>{percent((snapshot.growthTotal / snapshot.investedTotal) * 100)}</small>
                 </td>
                 <td>

@@ -60,7 +60,8 @@ def parse_date(val: str) -> str | None:
     return None
 
 
-def get_page_rows(page) -> list[list[str]]:
+def get_page_rows(page) -> list[tuple[list[str], float]]:
+    """Returns list of (word_texts, last_word_x0) per row."""
     words = page.extract_words(x_tolerance=3, y_tolerance=3)
     if not words:
         return []
@@ -75,7 +76,7 @@ def get_page_rows(page) -> list[list[str]]:
     rows = []
     for y in sorted(by_y):
         word_list = sorted(by_y[y], key=lambda w: w["x0"])
-        rows.append([w["text"] for w in word_list])
+        rows.append(([w["text"] for w in word_list], word_list[-1]["x0"]))
     return rows
 
 
@@ -154,6 +155,37 @@ def try_parse_noa_format(words: list[str]) -> dict | None:
         return {"date": date_str, "amount": amount, "kind": "Non-originated ACH Deposit"}
     else:
         return {"date": date_str, "amount": -amount, "kind": "Non-originated ACH Withdrawal"}
+
+
+def try_parse_truncated_noa_format(words: list[str], last_x0: float) -> dict | None:
+    """
+    Truncated NOA format where the 'Non-originated ACH Deposit/Withdrawal' prefix is
+    missing — only the counterparty name remains:
+      [...description..., 'Margin', 'NOA', 'MM/DD/YYYY', '$AMOUNT']
+    Uses the x-position of the amount to distinguish Debit (x0 ~636) vs Credit (x0 ~698).
+    Threshold set at 670 based on observed RHS statement column layout.
+    """
+    if len(words) < 4:
+        return None
+    if words[0] == "Non-originated":
+        return None  # handled by try_parse_noa_format
+    if words[-3] != "NOA" or words[-4] != "Margin":
+        return None
+    if not DATE_RE_LONG.match(words[-2]):
+        return None
+
+    date_str = parse_date(words[-2])
+    if not date_str:
+        return None
+
+    amount = parse_amount(words[-1])
+    if amount is None or amount == 0:
+        return None
+
+    if last_x0 < 670:
+        return {"date": date_str, "amount": -amount, "kind": "Non-originated ACH Withdrawal"}
+    else:
+        return {"date": date_str, "amount": amount, "kind": "Non-originated ACH Deposit"}
 
 
 def parse_mirrored_funds_section(lines: list[str]) -> list[dict]:
@@ -259,7 +291,7 @@ def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, 1):
             rows = get_page_rows(page)
-            for words in rows:
+            for words, last_x0 in rows:
                 if not words:
                     continue
 
@@ -279,6 +311,11 @@ def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
                     result = try_parse_noa_format(words)
                     if result:
                         transactions.append(result)
+                    continue
+
+                result = try_parse_truncated_noa_format(words, last_x0)
+                if result:
+                    transactions.append(result)
                     continue
 
                 if words[0] != "ACH":

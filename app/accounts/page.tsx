@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { currency, getAccountsWithBalances, percent } from "@/lib/calculations";
+import { currencyPrecise, getAccountsWithBalances, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 import { saveBalances } from "./actions";
 
@@ -56,7 +56,7 @@ export default async function AccountsPage() {
                           <td rowSpan={group.accounts.length}><strong>{group.institution}</strong></td>
                         ) : null}
                         <td>{group.accounts.length > 1 ? (account.subaccountName ?? account.name) : null}</td>
-                        <td>{currency(account.investedTotal)}</td>
+                        <td>{currencyPrecise(account.investedTotal)}</td>
                         <td>
                           <input
                             className="balance-input"
@@ -67,7 +67,7 @@ export default async function AccountsPage() {
                           />
                         </td>
                         <td>
-                          {currency(account.growthDollars)}
+                          {currencyPrecise(account.growthDollars)}
                           <small>{percent(account.growthPercent)}</small>
                         </td>
                       </tr>
@@ -79,9 +79,9 @@ export default async function AccountsPage() {
                 <tr className="subtotal-row">
                   <td><strong>Total</strong></td>
                   <td />
-                  <td>{currency(accountRows.reduce((s, a) => s + a.investedTotal, 0))}</td>
-                  <td><span className="balance-total">{currency(accountRows.reduce((s, a) => s + a.latestBalance, 0))}</span></td>
-                  <td>{currency(accountRows.reduce((s, a) => s + a.growthDollars, 0))}</td>
+                  <td>{currencyPrecise(accountRows.reduce((s, a) => s + a.investedTotal, 0))}</td>
+                  <td><span className="balance-total">{currencyPrecise(accountRows.reduce((s, a) => s + a.latestBalance, 0))}</span></td>
+                  <td>{currencyPrecise(accountRows.reduce((s, a) => s + a.growthDollars, 0))}</td>
                 </tr>
               </tfoot>
             </table>

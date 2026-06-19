@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { accountLabel, currency } from "@/lib/calculations";
+import { accountLabel, currencyPrecise } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 import { addContribution } from "./actions";
 import { ContributionsTable } from "./ContributionsTable";
@@ -29,7 +29,7 @@ export default async function ContributionsPage({
       <section className="metric-grid compact">
         <article className="metric-card">
           <span>Total Recorded</span>
-          <strong>{currency(total)}</strong>
+          <strong>{currencyPrecise(total)}</strong>
           <small>{rows.length} entries</small>
         </article>
       </section>

@@ -5,6 +5,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { TrendChart } from "@/components/TrendChart";
 import {
   currency,
+  currencyPrecise,
   dateTimeLabel,
   getAccountsWithBalances,
   getDashboardSummary,
@@ -88,14 +89,14 @@ export default async function DashboardPage() {
                       <tr key={account.id}>
                         <td><strong>{index === 0 ? group.institution : ""}</strong></td>
                         <td>{account.subaccountName ?? account.name}</td>
-                        <td>{currency(account.latestBalance)}</td>
+                        <td>{currencyPrecise(account.latestBalance)}</td>
                       </tr>
                     ))}
                     {group.hasMultipleAccounts ? (
                       <tr className="subtotal-row">
                         <td><strong>{group.institution} Total</strong></td>
                         <td />
-                        <td>{currency(group.totalBalance)}</td>
+                        <td>{currencyPrecise(group.totalBalance)}</td>
                       </tr>
                     ) : null}
                   </Fragment>
@@ -106,7 +107,7 @@ export default async function DashboardPage() {
           <div className="class-total">
             <strong>Total</strong>
             <span />
-            <strong>{currency(liquidGroups.reduce((s, g) => s + g.totalBalance, 0))}</strong>
+            <strong>{currencyPrecise(liquidGroups.reduce((s, g) => s + g.totalBalance, 0))}</strong>
           </div>
         </section>
 
@@ -133,14 +134,14 @@ export default async function DashboardPage() {
                       <tr key={account.id}>
                         <td><strong>{index === 0 ? group.institution : ""}</strong></td>
                         <td>{account.subaccountName ?? account.name}</td>
-                        <td>{currency(account.latestBalance)}</td>
+                        <td>{currencyPrecise(account.latestBalance)}</td>
                       </tr>
                     ))}
                     {group.hasMultipleAccounts ? (
                       <tr className="subtotal-row">
                         <td><strong>{group.institution} Total</strong></td>
                         <td />
-                        <td>{currency(group.totalBalance)}</td>
+                        <td>{currencyPrecise(group.totalBalance)}</td>
                       </tr>
                     ) : null}
                   </Fragment>
@@ -151,7 +152,7 @@ export default async function DashboardPage() {
           <div className="class-total">
             <strong>Total</strong>
             <span />
-            <strong>{currency(nonLiquidGroups.reduce((s, g) => s + g.totalBalance, 0))}</strong>
+            <strong>{currencyPrecise(nonLiquidGroups.reduce((s, g) => s + g.totalBalance, 0))}</strong>
           </div>
         </section>
 

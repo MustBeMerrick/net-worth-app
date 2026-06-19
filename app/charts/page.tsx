@@ -1,5 +1,5 @@
 import { TrendChart } from "@/components/TrendChart";
-import { currency, dateLabel, getSnapshotChartPoints } from "@/lib/calculations";
+import { currencyPrecise, dateLabel, getSnapshotChartPoints } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 
 export const dynamic = "force-dynamic";
@@ -40,10 +40,10 @@ export default async function ChartsPage() {
               {[...points].reverse().map((point) => (
                 <tr key={point.date}>
                   <td>{dateLabel(point.date)}</td>
-                  <td>{currency(point.netWorth)}</td>
-                  <td>{currency(point.invested)}</td>
-                  <td>{currency(point.growth)}</td>
-                  <td>{currency(point.model)}</td>
+                  <td>{currencyPrecise(point.netWorth)}</td>
+                  <td>{currencyPrecise(point.invested)}</td>
+                  <td>{currencyPrecise(point.growth)}</td>
+                  <td>{currencyPrecise(point.model)}</td>
                 </tr>
               ))}
             </tbody>
