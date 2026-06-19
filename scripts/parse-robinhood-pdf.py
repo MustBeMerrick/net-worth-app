@@ -130,6 +130,32 @@ def try_parse_new_format(words: list[str]) -> dict | None:
         return {"date": date_str, "amount": -amount, "kind": "ACH Withdrawal"}
 
 
+def try_parse_noa_format(words: list[str]) -> dict | None:
+    """
+    Non-originated ACH format:
+    ['Non-originated', 'ACH', 'Deposit'|'Withdrawal', ...description..., 'MM/DD/YYYY', '$AMOUNT']
+    """
+    if len(words) < 6 or words[0] != "Non-originated" or words[1] != "ACH":
+        return None
+    if words[2] not in ("Deposit", "Withdrawal"):
+        return None
+    if not DATE_RE_LONG.match(words[-2]):
+        return None
+
+    date_str = parse_date(words[-2])
+    if not date_str:
+        return None
+
+    amount = parse_amount(words[-1])
+    if amount is None or amount == 0:
+        return None
+
+    if words[2] == "Deposit":
+        return {"date": date_str, "amount": amount, "kind": "Non-originated ACH Deposit"}
+    else:
+        return {"date": date_str, "amount": -amount, "kind": "Non-originated ACH Withdrawal"}
+
+
 def parse_mirrored_funds_section(lines: list[str]) -> list[dict]:
     """
     Parse transactions from a mirrored Apex FUNDS PAID AND RECEIVED block.
@@ -247,6 +273,12 @@ def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
                     continue
                 if in_funds_section and words[0] == "Total" and "Funds" in words:
                     in_funds_section = False
+                    continue
+
+                if words[0] == "Non-originated":
+                    result = try_parse_noa_format(words)
+                    if result:
+                        transactions.append(result)
                     continue
 
                 if words[0] != "ACH":
