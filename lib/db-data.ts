@@ -63,6 +63,7 @@ export async function getFinanceData(): Promise<FinanceData> {
     investedTotal: dollars(snapshot.investedTotalCents),
     netWorthTotal: dollars(snapshot.netWorthTotalCents),
     growthTotal: dollars(snapshot.growthTotalCents),
+    growthAdjustment: snapshot.growthAdjustmentCents == null ? undefined : dollars(snapshot.growthAdjustmentCents),
     notes: snapshot.notes ?? undefined
   }));
 

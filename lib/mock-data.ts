@@ -54,6 +54,7 @@ export type Snapshot = {
   investedTotal: number;
   netWorthTotal: number;
   growthTotal: number;
+  growthAdjustment?: number;
   notes?: string;
 };
 

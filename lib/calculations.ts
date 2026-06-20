@@ -236,7 +236,7 @@ export function basisPointsToPercent(value: number): number {
 }
 
 export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): AnnualReturnBlock[] {
-  const activeAccounts = data.accounts.filter((a) => a.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
+  const allAccounts = data.accounts.slice().sort((a, b) => a.displayOrder - b.displayOrder);
 
   const sortByYear = (a: Snapshot, b: Snapshot) => {
     const aYear = a.yearEndForYear ?? new Date(a.snapshotDate).getFullYear();
@@ -278,10 +278,10 @@ export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): Annu
 
     const prevNetWorth = prevSnapshot?.netWorthTotal ?? 0;
     const yearlyInvestedTotal = snapshot.investedTotal - prevInvestedTotal;
-    const totalGrowthDollars = snapshot.netWorthTotal - yearlyInvestedTotal - prevNetWorth;
+    const totalGrowthDollars = snapshot.netWorthTotal - yearlyInvestedTotal - prevNetWorth + (snapshot.growthAdjustment ?? 0);
     const totalGrowthBase = prevNetWorth !== 0 ? prevNetWorth : yearlyInvestedTotal;
 
-    const rows: AnnualAccountReturn[] = activeAccounts.flatMap((account) => {
+    const rows: AnnualAccountReturn[] = allAccounts.flatMap((account) => {
       const balance = balanceByAccountId.get(account.id);
       if (!balance) return [];
       const cumulativeInvested = balance.invested ?? 0;
@@ -289,8 +289,10 @@ export function getAnnualReturnBlocks(data: FinanceData = mockFinanceData): Annu
       const prevAcct = prevBalanceByAccount.get(account.id);
       const yearlyInvested = cumulativeInvested - (prevAcct?.invested ?? 0);
       const prevDec31Balance = prevAcct?.balance ?? 0;
-      if (yearlyInvested === 0 && dec31Balance === 0) return [];
-      const growthDollars = dec31Balance - yearlyInvested - prevDec31Balance;
+      if (yearlyInvested === 0 && dec31Balance === 0 && balance.growth === undefined) return [];
+      const growthDollars = balance.growth !== undefined
+        ? balance.growth
+        : dec31Balance - yearlyInvested - prevDec31Balance;
       const growthBase = prevDec31Balance !== 0 ? prevDec31Balance : yearlyInvested;
       const growthPercent = growthBase === 0 ? undefined : (growthDollars / growthBase) * 100;
       return [{ account, investedTotal: yearlyInvested, growthPercent, growthDollars, dec31Balance }];

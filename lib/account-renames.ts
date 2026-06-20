@@ -2,7 +2,7 @@
 // `before` is exclusive: the rename applies for years strictly less than `before`.
 const RENAMES: Record<string, { institution: string; before: number }[]> = {
   "lpl-individual": [{ institution: "Kestra", before: 2026 }],
-  "hsa": [{ institution: "WEX", before: 2022 }],
+  "hsa": [{ institution: "WEX", before: 2026 }],
 };
 
 export function institutionAtYear(accountId: string, institution: string, year: number): string {
