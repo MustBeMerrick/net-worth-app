@@ -1,14 +1,9 @@
 import { ActionButton } from "@/components/ActionButton";
-import { getFinanceData } from "@/lib/db-data";
 import { takeSnapshot, takeYearEndSnapshot } from "./actions";
-import { SnapshotsTable } from "./SnapshotsTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function SnapshotsPage() {
-  const data = await getFinanceData();
-  const rows = [...data.snapshots].sort((a, b) => b.snapshotDate.localeCompare(a.snapshotDate));
-
   return (
     <div className="page-stack">
       <header className="page-header">
@@ -43,9 +38,6 @@ export default async function SnapshotsPage() {
         </form>
       </section>
 
-      <section className="panel">
-        <SnapshotsTable rows={rows} />
-      </section>
     </div>
   );
 }

@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { PickupNote } from "@/components/PickupNote";
+import { ToastProvider } from "@/components/ToastProvider";
 import "./globals.css";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/accounts", label: "Account Balances" },
   { href: "/contributions", label: "Contributions" },
-  { href: "/snapshots", label: "Snapshots" },
   { href: "/annual-returns", label: "Annual Returns" },
   { href: "/charts", label: "Charts" }
 ];
@@ -50,8 +50,10 @@ export default function RootLayout({
               ))}
             </nav>
           </aside>
-          <main className="main-content">{children}</main>
-          <PickupNote />
+          <ToastProvider>
+            <main className="main-content">{children}</main>
+            <PickupNote />
+          </ToastProvider>
         </div>
       </body>
     </html>

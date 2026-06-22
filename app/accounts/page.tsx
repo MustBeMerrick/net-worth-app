@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { currencyPrecise, getAccountsWithBalances, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
 import { saveBalances } from "./actions";
+import { SnapshotForm } from "./SnapshotForm";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function AccountsPage() {
           <button className="action-button action-button-primary" type="submit" form="balances-form">
             Save Balances
           </button>
+          <SnapshotForm />
         </div>
       </header>
 

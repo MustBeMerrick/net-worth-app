@@ -5,6 +5,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
+export async function takeSnapshotCombined(formData: FormData) {
+  const isYearEnd = formData.get("isYearEnd") === "on";
+  if (isYearEnd) {
+    return takeYearEndSnapshot(formData);
+  }
+  return takeSnapshot();
+}
+
 export async function takeSnapshot() {
   const [accounts, allFetches, contributionTotals] = await Promise.all([
     prisma.account.findMany({ where: { isActive: true } }),
@@ -69,10 +77,10 @@ export async function takeSnapshot() {
   });
 
   revalidatePath("/");
-  revalidatePath("/snapshots");
+  revalidatePath("/accounts");
   revalidatePath("/annual-returns");
   revalidatePath("/charts");
-  redirect("/snapshots");
+  redirect("/accounts");
 }
 
 export async function takeYearEndSnapshot(formData: FormData) {
@@ -139,10 +147,10 @@ export async function takeYearEndSnapshot(formData: FormData) {
   });
 
   revalidatePath("/");
-  revalidatePath("/snapshots");
+  revalidatePath("/accounts");
   revalidatePath("/annual-returns");
   revalidatePath("/charts");
-  redirect("/snapshots");
+  redirect("/accounts");
 }
 
 export async function deleteSnapshot(id: string) {

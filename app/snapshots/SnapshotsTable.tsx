@@ -1,80 +1,31 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { currencyPrecise, dateLabel, percent } from "@/lib/calculations";
 import type { Snapshot } from "@/lib/mock-data";
 import { deleteSnapshot } from "./actions";
+import { useToast } from "@/components/ToastProvider";
 
-const UNDO_DELAY_MS = 5000;
 const EXIT_ANIM_MS = 250;
 
 type Props = {
   rows: Snapshot[];
 };
 
-type PendingDelete = {
-  id: string;
-  label: string;
-};
-
 export function SnapshotsTable({ rows }: Props) {
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const { scheduleDelete, pendingId } = useToast();
   const [rowLeavingId, setRowLeavingId] = useState<string | null>(null);
-  const [isToastLeaving, setIsToastLeaving] = useState(false);
-  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function startToastExit(onDone: () => void) {
-    setIsToastLeaving(true);
-    exitTimerRef.current = setTimeout(() => {
-      setPendingDelete(null);
-      setIsToastLeaving(false);
-      exitTimerRef.current = null;
-      onDone();
-    }, EXIT_ANIM_MS);
-  }
-
-  function scheduleDelete(id: string, label: string) {
-    if (deleteTimerRef.current) {
-      clearTimeout(deleteTimerRef.current);
-      deleteTimerRef.current = null;
-      if (pendingDelete) deleteSnapshot(pendingDelete.id);
-    }
-    if (exitTimerRef.current) {
-      clearTimeout(exitTimerRef.current);
-      exitTimerRef.current = null;
-    }
-
+  function handleScheduleDelete(id: string, label: string) {
     setRowLeavingId(id);
-    setPendingDelete({ id, label });
-    setIsToastLeaving(false);
     setTimeout(() => setRowLeavingId(null), EXIT_ANIM_MS);
-
-    deleteTimerRef.current = setTimeout(() => {
-      deleteTimerRef.current = null;
-      startToastExit(() => deleteSnapshot(id));
-    }, UNDO_DELAY_MS);
+    scheduleDelete(id, label, () => deleteSnapshot(id));
   }
 
-  function handleUndo() {
-    if (deleteTimerRef.current) {
-      clearTimeout(deleteTimerRef.current);
-      deleteTimerRef.current = null;
-    }
-    startToastExit(() => {});
-  }
-
-  const visibleRows = rows.filter((r) => r.id !== pendingDelete?.id || r.id === rowLeavingId);
+  const visibleRows = rows.filter((r) => r.id !== pendingId || r.id === rowLeavingId);
 
   return (
     <>
-      {pendingDelete && (
-        <div className={`undo-toast${isToastLeaving ? " leaving" : ""}`} role="status">
-          <span>Deleted <strong>{pendingDelete.label}</strong></span>
-          <button className="undo-toast-button" onClick={handleUndo}>Undo</button>
-        </div>
-      )}
-
       <div className="table-wrap">
         <table>
           <thead>
@@ -104,7 +55,7 @@ export function SnapshotsTable({ rows }: Props) {
                   <button
                     className="delete-button"
                     type="button"
-                    onClick={() => scheduleDelete(snapshot.id, snapshot.label)}
+                    onClick={() => handleScheduleDelete(snapshot.id, snapshot.label)}
                   >
                     Delete
                   </button>
