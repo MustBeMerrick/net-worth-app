@@ -13,7 +13,6 @@ import {
   percent
 } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
-import { takeSnapshot } from "@/app/snapshots/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +37,6 @@ export default async function DashboardPage() {
               <small className="action-subtext">synced: {dateTimeLabel(summary.lastPlaidSync)}</small>
             ) : null}
           </div>
-          <form action={takeSnapshot}>
-            <ActionButton type="submit">Take Snapshot</ActionButton>
-          </form>
-          <ActionButton>Add Contribution</ActionButton>
           <ActionButton>Export Backup</ActionButton>
         </div>
       </header>
