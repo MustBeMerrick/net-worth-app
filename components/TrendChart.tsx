@@ -72,7 +72,7 @@ export function TrendChart({ snapshots }: TrendChartProps) {
   const rawMin = Math.min(...allValues);
   const rawMax = Math.max(...allValues);
   const range = rawMax - rawMin || rawMax;
-  const min = rawMin - range * 0.06;
+  const min = Math.max(0, rawMin - range * 0.06);
   const max = rawMax + range * 0.04;
 
   const yTicks = Array.from({ length: Y_TICKS }, (_, i) => {
@@ -167,7 +167,7 @@ export function TrendChart({ snapshots }: TrendChartProps) {
               return `${x.toFixed(1)},${y.toFixed(1)}`;
             }).join(" ");
             return (
-              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={points} />
+              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={points} />
             );
           })}
 

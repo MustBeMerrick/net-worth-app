@@ -157,6 +157,37 @@ def try_parse_noa_format(words: list[str]) -> dict | None:
         return {"date": date_str, "amount": -amount, "kind": "Non-originated ACH Withdrawal"}
 
 
+def try_parse_rtp_format(words: list[str], last_x0: float) -> dict | None:
+    """
+    Instant bank transfer (RTP) rows in Account Activity:
+      ['Instant', 'bank', 'transfer', '-', 'account', 'ending', 'in', '6997',
+       'Margin', 'RTP', 'MM/DD/YYYY', '$AMOUNT']
+    Withdrawal-fee rows have words[4]=='withdrawal' — skip them.
+    Credit column x0 ~739–749; debit column x0 ~679–687. Threshold: 710.
+    """
+    if len(words) < 6 or words[0] != "Instant":
+        return None
+    if words[-3] != "RTP":
+        return None
+    if not DATE_RE_LONG.match(words[-2]):
+        return None
+    if len(words) > 4 and words[4] == "withdrawal":
+        return None  # withdrawal fee line, not principal
+
+    date_str = parse_date(words[-2])
+    if not date_str:
+        return None
+
+    amount = parse_amount(words[-1])
+    if amount is None or amount == 0:
+        return None
+
+    if last_x0 >= 710:
+        return {"date": date_str, "amount": amount, "kind": "Instant Transfer Deposit"}
+    else:
+        return {"date": date_str, "amount": -amount, "kind": "Instant Transfer Withdrawal"}
+
+
 def try_parse_truncated_noa_format(words: list[str], last_x0: float) -> dict | None:
     """
     Truncated NOA format where the 'Non-originated ACH Deposit/Withdrawal' prefix is
@@ -307,6 +338,12 @@ def extract_transactions(pdf_path: str, debug: bool = False) -> list[dict]:
                     in_funds_section = False
                     continue
 
+                if words[0] == "Instant":
+                    result = try_parse_rtp_format(words, last_x0)
+                    if result:
+                        transactions.append(result)
+                    continue
+
                 if words[0] == "Non-originated":
                     result = try_parse_noa_format(words)
                     if result:
@@ -352,8 +389,8 @@ def main():
         sys.exit(1)
 
     for t in transactions:
-        sign = "+" if t["amount"] >= 0 else ""
-        print(f"  {t['date']}  {t['kind']:<20}  {sign}${t['amount']:>10,.2f}", file=sys.stderr)
+        amt_str = f"${t['amount']:>11,.2f}"
+        print(f"  {t['date']}  {t['kind']:<28}  {amt_str}", file=sys.stderr)
 
     if args.output:
         fieldnames = ["date", "amount", "transaction_type", "note"]
