@@ -97,6 +97,80 @@ export async function updateContributionKind(contributionId: string, kind: "cont
   revalidatePath("/annual-returns");
 }
 
+export async function toggleFromGrowth(contributionId: string, isFromGrowth: boolean) {
+  const contribution = await prisma.contribution.findUnique({
+    where: { id: contributionId },
+    select: { id: true, accountId: true, yearBucket: true, amountCents: true, isFromGrowth: true }
+  });
+
+  if (!contribution) {
+    throw new Error("Contribution not found.");
+  }
+
+  // No-op if the flag is already in the requested state — avoids double-applying the delta.
+  if (contribution.isFromGrowth === isFromGrowth) {
+    return;
+  }
+
+  const { accountId, yearBucket, amountCents } = contribution;
+
+  // Flagging from-growth removes this contribution's amount from cumulative invested;
+  // clearing the flag re-adds it. The adjustment is exactly the contribution amount — we
+  // do NOT recompute invested from the contributions table, because historical snapshot
+  // invested totals were entered from statements and are not a sum of contribution rows.
+  // (Withdrawals are negative, so excluding one raises invested by its magnitude.)
+  const investedDelta = isFromGrowth ? -amountCents : amountCents;
+
+  // Year-end snapshots whose cumulative invested includes this contribution.
+  // Manual snapshots are intentionally left untouched (their totals are frozen at capture time).
+  const affectedSnapshots = await prisma.snapshot.findMany({
+    where: {
+      kind: "year_end",
+      yearEndForYear: yearBucket == null ? undefined : { gte: yearBucket }
+    },
+    select: { id: true, investedTotalCents: true, growthTotalCents: true }
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.contribution.update({
+      where: { id: contributionId },
+      data: { isFromGrowth }
+    });
+
+    for (const snapshot of affectedSnapshots) {
+      // Net worth is unchanged, so growth moves opposite to invested.
+      await tx.snapshot.update({
+        where: { id: snapshot.id },
+        data: {
+          investedTotalCents: snapshot.investedTotalCents + investedDelta,
+          growthTotalCents: snapshot.growthTotalCents - investedDelta
+        }
+      });
+
+      const sb = await tx.snapshotBalance.findUnique({
+        where: { snapshotId_accountId: { snapshotId: snapshot.id, accountId } }
+      });
+      if (!sb) continue;
+
+      // growthCents is an override that is normally null — when null, annual-returns
+      // computes per-year growth on the fly, so leave it null. Only adjust an existing
+      // override so balance = invested + growth stays consistent.
+      await tx.snapshotBalance.update({
+        where: { id: sb.id },
+        data: {
+          investedCents: (sb.investedCents ?? BigInt(0)) + investedDelta,
+          ...(sb.growthCents === null ? {} : { growthCents: sb.growthCents - investedDelta })
+        }
+      });
+    }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/contributions");
+  revalidatePath("/annual-returns");
+  revalidatePath("/snapshots");
+}
+
 export async function deleteContribution(formData: FormData) {
   const contributionId = fieldValue(formData, "contributionId");
 

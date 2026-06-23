@@ -1013,6 +1013,28 @@ tr.row-leaving {
   white-space: nowrap;
 }
 
+.amount-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.from-growth-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.from-growth-toggle input {
+  cursor: pointer;
+  margin: 0;
+}
+
 .icon-button {
   min-height: 30px;
   padding: 0 10px;

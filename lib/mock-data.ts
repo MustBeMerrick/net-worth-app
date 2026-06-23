@@ -39,6 +39,7 @@ export type Contribution = {
   amount: number;
   createdAt?: string;
   kind?: ContributionKind;
+  isFromGrowth?: boolean;
   note?: string;
   source?: string;
 };

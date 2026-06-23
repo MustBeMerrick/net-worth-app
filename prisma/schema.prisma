@@ -139,6 +139,7 @@ model Contribution {
   contributionDate DateTime
   amountCents      BigInt
   kind             ContributionKind @default(contribution)
+  isFromGrowth     Boolean          @default(false)
   note             String?
   source           String           @default("manual")
   yearBucket       Int?
