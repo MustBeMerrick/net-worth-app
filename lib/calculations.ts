@@ -130,6 +130,7 @@ export function getLatestBalanceFetches(fetches: BalanceFetch[] = balanceFetches
 
 export function getInvestedByAccount(entries: Contribution[] = contributions): Map<string, number> {
   return entries.reduce((totals, contribution) => {
+    if (contribution.isFromGrowth) return totals;
     totals.set(contribution.accountId, (totals.get(contribution.accountId) ?? 0) + contribution.amount);
     return totals;
   }, new Map<string, number>());

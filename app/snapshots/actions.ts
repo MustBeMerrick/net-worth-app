@@ -19,6 +19,7 @@ export async function takeSnapshot() {
     prisma.balanceFetch.findMany({ orderBy: { fetchedAt: "desc" } }),
     prisma.contribution.groupBy({
       by: ["accountId"],
+      where: { isFromGrowth: false },
       _sum: { amountCents: true }
     })
   ]);
@@ -92,7 +93,7 @@ export async function takeYearEndSnapshot(formData: FormData) {
     prisma.balanceFetch.findMany({ orderBy: { fetchedAt: "desc" } }),
     prisma.contribution.groupBy({
       by: ["accountId"],
-      where: { yearBucket: { lte: year } },
+      where: { yearBucket: { lte: year }, isFromGrowth: false },
       _sum: { amountCents: true }
     })
   ]);

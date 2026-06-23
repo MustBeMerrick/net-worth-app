@@ -50,6 +50,7 @@ export async function getFinanceData(): Promise<FinanceData> {
     amount: dollars(contribution.amountCents),
     createdAt: contribution.createdAt.toISOString(),
     kind: contribution.kind,
+    isFromGrowth: contribution.isFromGrowth,
     note: contribution.note ?? undefined,
     source: contribution.source
   }));

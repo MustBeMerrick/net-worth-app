@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { currencyPrecise, dateLabel } from "@/lib/calculations";
 import { institutionAtYear } from "@/lib/account-renames";
 import type { Account, Contribution } from "@/lib/mock-data";
-import { deleteContributionById } from "./actions";
+import { deleteContributionById, toggleFromGrowth } from "./actions";
 import { useToast } from "@/components/ToastProvider";
 
 const EXIT_ANIM_MS = 250;
@@ -33,6 +33,16 @@ export function ContributionsTable({ rows, accountById }: Props) {
 
   const { scheduleDelete, pendingId } = useToast();
   const [rowLeavingId, setRowLeavingId] = useState<string | null>(null);
+  const [, startToggle] = useTransition();
+  // Optimistic overrides for the From Growth flag, keyed by contribution id.
+  const [fromGrowthOverrides, setFromGrowthOverrides] = useState<Record<string, boolean>>({});
+
+  function handleToggleFromGrowth(id: string, next: boolean) {
+    setFromGrowthOverrides((prev) => ({ ...prev, [id]: next }));
+    startToggle(() => {
+      toggleFromGrowth(id, next);
+    });
+  }
 
   // Derive filter options from full row set
   const accountOptions = Array.from(
@@ -153,7 +163,22 @@ export function ContributionsTable({ rows, accountById }: Props) {
                     <strong>{displayInstitution}</strong>
                     <small>{account?.subaccountName ?? account?.name}</small>
                   </td>
-                  <td>{currencyPrecise(contribution.amount)}</td>
+                  <td>
+                    <span className="amount-cell">
+                      {currencyPrecise(contribution.amount)}
+                      {contribution.amount < 0 && (
+                        <label className="from-growth-toggle">
+                          <input
+                            type="checkbox"
+                            checked={fromGrowthOverrides[contribution.id] ?? contribution.isFromGrowth ?? false}
+                            onChange={(e) => handleToggleFromGrowth(contribution.id, e.target.checked)}
+                            aria-label="Exclude this withdrawal from invested totals (from growth)"
+                          />
+                          <span>from growth</span>
+                        </label>
+                      )}
+                    </span>
+                  </td>
                   <td>{contribution.note}</td>
                   <td className="table-action-cell">
                     <button
