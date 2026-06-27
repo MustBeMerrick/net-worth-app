@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { TrendChart } from "@/components/TrendChart";
 import type { Snapshot } from "@/lib/mock-data";
 
-type Range = "all" | "5y" | "1y" | "custom";
+type Range = "all" | "5y" | "1y" | "ytd" | "custom";
 
 const PRESETS: { key: Range; label: string; months: number | null }[] = [
   { key: "all", label: "All", months: null },
   { key: "5y", label: "5Y", months: 60 },
   { key: "1y", label: "1Y", months: 12 },
+  { key: "ytd", label: "YTD", months: null },
   { key: "custom", label: "Custom", months: null }
 ];
 
@@ -40,9 +41,19 @@ export function ChartsTrendSection({ snapshots }: { snapshots: Snapshot[] }) {
         return t >= fromMs && t <= toMs;
       });
     }
+    // Anchor relative ranges to the latest snapshot, not wall-clock "now": the
+    // data is historical, so the current calendar year may have no snapshots yet
+    // (which would empty the filter and blank the chart).
+    if (snapshots.length === 0) return snapshots;
+    const refMs = Math.max(...snapshots.map((s) => new Date(s.snapshotDate).getTime()));
+
+    if (range === "ytd") {
+      const cutoffMs = Date.UTC(new Date(refMs).getUTCFullYear(), 0, 1);
+      return snapshots.filter((s) => new Date(s.snapshotDate).getTime() >= cutoffMs);
+    }
     const months = PRESETS.find((r) => r.key === range)?.months ?? null;
     if (months == null) return snapshots;
-    const cutoff = new Date();
+    const cutoff = new Date(refMs);
     cutoff.setMonth(cutoff.getMonth() - months);
     const cutoffMs = cutoff.getTime();
     return snapshots.filter((s) => new Date(s.snapshotDate).getTime() >= cutoffMs);

@@ -98,8 +98,17 @@ export function TrendChart({ snapshots }: TrendChartProps) {
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     const svg = svgRef.current;
     if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const relX = ((e.clientX - rect.left) / rect.width) * SW;
+    // Map the cursor into viewBox user units via the SVG's own transform. This
+    // accounts for the element's padding and scaling automatically — measuring
+    // against getBoundingClientRect() would include the 18px padding and skew the
+    // mapping (shift + scale), drifting the crosshair away from the cursor.
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const local = pt.matrixTransform(ctm.inverse());
+    const relX = local.x;
     if (relX < ML || relX > ML + CW) {
       setHovered(null);
       return;
@@ -114,8 +123,7 @@ export function TrendChart({ snapshots }: TrendChartProps) {
     const pointMs = new Date(nearest.date).getTime();
     const svgX = cxMs(pointMs, minMs, maxMs);
     const cssXFraction = (svgX - ML) / CW;
-    const relY = ((e.clientY - rect.top) / rect.height) * SH;
-    const svgY = Math.max(MT, Math.min(MT + CH, relY));
+    const svgY = Math.max(MT, Math.min(MT + CH, local.y));
     setHovered({ point: nearest, svgX, svgY, cssXFraction });
   }
 

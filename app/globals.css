@@ -1060,6 +1060,18 @@ tr.row-leaving {
   margin: 0;
 }
 
+.amount-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.from-growth-all {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .icon-button {
   min-height: 30px;
   padding: 0 10px;

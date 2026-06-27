@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { currencyPrecise, dateLabel } from "@/lib/calculations";
 import { institutionAtYear } from "@/lib/account-renames";
 import type { Account, Contribution } from "@/lib/mock-data";
-import { deleteContributionById, toggleFromGrowth } from "./actions";
+import { bulkSetFromGrowth, deleteContributionById, toggleFromGrowth } from "./actions";
 import { useToast } from "@/components/ToastProvider";
 
 const EXIT_ANIM_MS = 250;
@@ -79,6 +79,24 @@ export function ContributionsTable({ rows, accountById }: Props) {
 
   const isFiltered = filterAccountId !== "all" || filterYear !== "all" || filterKind !== "all";
 
+  // Withdrawal rows currently shown — the only ones with a "from growth" box.
+  const withdrawalRows = visibleRows.filter((r) => r.amount < 0 && r.id !== rowLeavingId && r.id !== pendingId);
+  const isFromGrowthOf = (r: Contribution) => fromGrowthOverrides[r.id] ?? r.isFromGrowth ?? false;
+  const allFromGrowth = withdrawalRows.length > 0 && withdrawalRows.every(isFromGrowthOf);
+
+  function handleToggleAll(next: boolean) {
+    const targets = withdrawalRows.filter((r) => isFromGrowthOf(r) !== next);
+    if (targets.length === 0) return;
+    setFromGrowthOverrides((prev) => {
+      const updated = { ...prev };
+      for (const r of targets) updated[r.id] = next;
+      return updated;
+    });
+    startToggle(() => {
+      bulkSetFromGrowth(targets.map((r) => r.id), next);
+    });
+  }
+
   return (
     <>
       <div className="table-filters">
@@ -136,7 +154,22 @@ export function ContributionsTable({ rows, accountById }: Props) {
             <tr>
               <th>Date</th>
               <th>Account</th>
-              <th>Amount</th>
+              <th>
+                <span className="amount-header">
+                  Amount
+                  {withdrawalRows.length > 0 && (
+                    <label className="from-growth-toggle from-growth-all" title="Toggle “from growth” for all shown withdrawals">
+                      <input
+                        type="checkbox"
+                        checked={allFromGrowth}
+                        onChange={(e) => handleToggleAll(e.target.checked)}
+                        aria-label="Toggle from growth for all shown withdrawals"
+                      />
+                      <span>all from growth</span>
+                    </label>
+                  )}
+                </span>
+              </th>
               <th>Note</th>
               <th>Actions</th>
             </tr>
