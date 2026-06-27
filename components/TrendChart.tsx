@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { currency, dateLabel, getExponentialFit, getSnapshotChartPoints } from "@/lib/calculations";
 import type { Snapshot } from "@/lib/mock-data";
 
@@ -46,6 +46,7 @@ type TrendChartProps = {
 type HoveredPoint = {
   point: ReturnType<typeof getSnapshotChartPoints>[0];
   svgX: number;
+  svgY: number; // cursor Y in viewBox units, clamped to the plot area
   cssXFraction: number; // 0–1 across chart width, for tooltip flip logic
 };
 
@@ -113,7 +114,26 @@ export function TrendChart({ snapshots }: TrendChartProps) {
     const pointMs = new Date(nearest.date).getTime();
     const svgX = cxMs(pointMs, minMs, maxMs);
     const cssXFraction = (svgX - ML) / CW;
-    setHovered({ point: nearest, svgX, cssXFraction });
+    const relY = ((e.clientY - rect.top) / rect.height) * SH;
+    const svgY = Math.max(MT, Math.min(MT + CH, relY));
+    setHovered({ point: nearest, svgX, svgY, cssXFraction });
+  }
+
+  // Anchor the tooltip beside the data dot vertically closest to the cursor,
+  // expanding into whichever side (down/up) has more room so it stays in bounds.
+  let tooltipVStyle: CSSProperties = { top: 12 };
+  if (hovered) {
+    let anchorY = cy(hovered.point[dataSeries[0].key], min, max);
+    let best = Infinity;
+    for (const item of dataSeries) {
+      const y = cy(hovered.point[item.key], min, max);
+      const dist = Math.abs(y - hovered.svgY);
+      if (dist < best) { best = dist; anchorY = y; }
+    }
+    const expandUp = anchorY > MT + CH / 2;
+    tooltipVStyle = expandUp
+      ? { top: "auto", bottom: `calc(${((SH - anchorY) / SH) * 100}% + 8px)` }
+      : { top: `calc(${(anchorY / SH) * 100}% + 8px)` };
   }
 
   return (
@@ -167,7 +187,7 @@ export function TrendChart({ snapshots }: TrendChartProps) {
               return `${x.toFixed(1)},${y.toFixed(1)}`;
             }).join(" ");
             return (
-              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" points={points} />
+              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" points={points} />
             );
           })}
 
@@ -203,6 +223,7 @@ export function TrendChart({ snapshots }: TrendChartProps) {
           <div
             className="chart-tooltip"
             style={{
+              ...tooltipVStyle,
               left: `calc(${hovered.cssXFraction * 100}% + ${(hovered.cssXFraction < 0.6 ? 12 : -12)}px)`,
               transform: hovered.cssXFraction < 0.6 ? "none" : "translateX(-100%)",
             }}

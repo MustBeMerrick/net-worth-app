@@ -737,7 +737,8 @@ tr.row-leaving {
 
 .segmented-control {
   display: inline-grid;
-  grid-template-columns: repeat(3, 54px);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(54px, max-content);
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -747,12 +748,36 @@ tr.row-leaving {
 
 .segmented-control button {
   border: 0;
+  padding: 0 12px;
   background: transparent;
 }
 
-.segmented-control button:first-child {
+.segmented-control button.active {
   color: #ffffff;
   background: #19231f;
+}
+
+.chart-range-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.chart-range-custom label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.chart-range-custom input[type="date"] {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .annual-block-list {
@@ -1138,7 +1163,7 @@ tr.row-leaving {
 
   .segmented-control {
     width: 100%;
-    grid-template-columns: repeat(3, 1fr);
+    grid-auto-columns: 1fr;
   }
 
   .annual-block-header,

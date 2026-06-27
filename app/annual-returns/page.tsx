@@ -293,11 +293,12 @@ export default async function AnnualReturnsPage() {
 
           const rowGroups: RowGroup[] = [];
           for (const row of block.rows) {
+            const inst = institutionAtYear(row.account.id, row.account.institution, block.year);
             const last = rowGroups[rowGroups.length - 1];
-            if (last && last.institution === row.account.institution) {
+            if (last && last.institution === inst) {
               last.rows.push(row);
             } else {
-              rowGroups.push({ institution: row.account.institution, rows: [row] });
+              rowGroups.push({ institution: inst, rows: [row] });
             }
           }
           for (const group of rowGroups) {
@@ -376,7 +377,7 @@ export default async function AnnualReturnsPage() {
                           ))}
                           {group.subtotal && (
                             <tr className="annual-institution-subtotal">
-                              <th scope="row">{institutionAtYear(group.rows[0].account.id, group.institution, block.year)}</th>
+                              <th scope="row">{group.institution}</th>
                               <td>Total</td>
                               <td>{currencyPrecise(group.subtotal.invested)}</td>
                               <td className={group.subtotal.growthPercent !== undefined && group.subtotal.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
