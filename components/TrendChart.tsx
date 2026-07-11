@@ -2,6 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from "react";
 import { currency, dateLabel, getExponentialFit, getSnapshotChartPoints } from "@/lib/calculations";
+import { ProjectionCalc } from "@/components/ProjectionCalc";
 import type { Snapshot } from "@/lib/mock-data";
 
 type SeriesKey = "netWorth" | "invested" | "growth";
@@ -41,6 +42,9 @@ function cy(value: number, min: number, max: number): number {
 
 type TrendChartProps = {
   snapshots?: Snapshot[];
+  // Full snapshot set for the exponential fit, so the model line stays fixed
+  // regardless of the visible range. Falls back to `snapshots` when omitted.
+  allSnapshots?: Snapshot[];
 };
 
 type HoveredPoint = {
@@ -50,12 +54,17 @@ type HoveredPoint = {
   cssXFraction: number; // 0–1 across chart width, for tooltip flip logic
 };
 
-export function TrendChart({ snapshots }: TrendChartProps) {
+export function TrendChart({ snapshots, allSnapshots }: TrendChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hovered, setHovered] = useState<HoveredPoint | null>(null);
+  // While the mouse is held down, `anchor` is the start point; the tooltip then
+  // shows the delta from anchor to the current cursor position for each series.
+  const [anchor, setAnchor] = useState<HoveredPoint | null>(null);
 
-  const data = getSnapshotChartPoints(snapshots);
-  const fit = getExponentialFit(snapshots);
+  // Fit always uses the full set so the model line / equation don't change with
+  // the range view; only the data lines + axis follow the (possibly filtered) rows.
+  const fit = getExponentialFit(allSnapshots ?? snapshots);
+  const data = getSnapshotChartPoints(snapshots, fit);
   if (data.length === 0) return null;
 
   const minMs = new Date(data[0].date).getTime();
@@ -95,24 +104,21 @@ export function TrendChart({ snapshots }: TrendChartProps) {
       }).join(" ")
     : null;
 
-  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+  function pointFromEvent(e: React.MouseEvent<SVGSVGElement>): HoveredPoint | null {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return null;
     // Map the cursor into viewBox user units via the SVG's own transform. This
     // accounts for the element's padding and scaling automatically — measuring
     // against getBoundingClientRect() would include the 18px padding and skew the
     // mapping (shift + scale), drifting the crosshair away from the cursor.
     const ctm = svg.getScreenCTM();
-    if (!ctm) return;
+    if (!ctm) return null;
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
     const local = pt.matrixTransform(ctm.inverse());
     const relX = local.x;
-    if (relX < ML || relX > ML + CW) {
-      setHovered(null);
-      return;
-    }
+    if (relX < ML || relX > ML + CW) return null;
     const ms = minMs + ((relX - ML) / CW) * (maxMs - minMs);
     let nearest = data[0];
     let nearestDist = Infinity;
@@ -124,7 +130,28 @@ export function TrendChart({ snapshots }: TrendChartProps) {
     const svgX = cxMs(pointMs, minMs, maxMs);
     const cssXFraction = (svgX - ML) / CW;
     const svgY = Math.max(MT, Math.min(MT + CH, local.y));
-    setHovered({ point: nearest, svgX, svgY, cssXFraction });
+    return { point: nearest, svgX, svgY, cssXFraction };
+  }
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    setHovered(pointFromEvent(e));
+  }
+
+  function handleMouseDown(e: React.MouseEvent<SVGSVGElement>) {
+    const p = pointFromEvent(e);
+    if (!p) return;
+    e.preventDefault(); // avoid native text/image drag while measuring
+    setAnchor(p);
+    setHovered(p);
+  }
+
+  function handleMouseUp() {
+    setAnchor(null);
+  }
+
+  function handleMouseLeave() {
+    setHovered(null);
+    setAnchor(null);
   }
 
   // Anchor the tooltip beside the data dot vertically closest to the cursor,
@@ -159,8 +186,10 @@ export function TrendChart({ snapshots }: TrendChartProps) {
           role="img"
           aria-label="Snapshot trend chart"
           onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHovered(null)}
-          style={{ cursor: "crosshair", display: "block" }}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          style={{ cursor: "crosshair", display: "block", userSelect: "none" }}
         >
           {yTicks.map(({ value, y }) => (
             <g key={value}>
@@ -195,17 +224,34 @@ export function TrendChart({ snapshots }: TrendChartProps) {
               return `${x.toFixed(1)},${y.toFixed(1)}`;
             }).join(" ");
             return (
-              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" points={points} />
+              <polyline key={item.key} fill="none" stroke={item.color} strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" points={points} />
             );
           })}
 
-          {/* End-of-series dots */}
-          {dataSeries.map((item) => {
-            const last = data[data.length - 1];
-            const x = cxMs(new Date(last.date).getTime(), minMs, maxMs);
-            const y = cy(last[item.key], min, max);
-            return <circle key={item.key} cx={x.toFixed(1)} cy={y.toFixed(1)} r="3.5" fill={item.color} />;
-          })}
+          {/* Drag-to-measure: shaded band + hollow anchor dots at the start point */}
+          {anchor && hovered && (
+            <>
+              <rect
+                x={Math.min(anchor.svgX, hovered.svgX).toFixed(1)}
+                y={MT}
+                width={Math.abs(hovered.svgX - anchor.svgX).toFixed(1)}
+                height={CH}
+                fill="rgba(90,114,184,0.10)"
+              />
+              <line x1={anchor.svgX.toFixed(1)} x2={anchor.svgX.toFixed(1)} y1={MT} y2={MT + CH} stroke="#888" strokeWidth="1" strokeDasharray="3 2" />
+              {dataSeries.map((item) => (
+                <circle
+                  key={`anchor-${item.key}`}
+                  cx={anchor.svgX.toFixed(1)}
+                  cy={cy(anchor.point[item.key], min, max).toFixed(1)}
+                  r="3.5"
+                  fill="white"
+                  stroke={item.color}
+                  strokeWidth="1.5"
+                />
+              ))}
+            </>
+          )}
 
           {/* Hover crosshair + dots */}
           {hovered && (
@@ -236,20 +282,56 @@ export function TrendChart({ snapshots }: TrendChartProps) {
               transform: hovered.cssXFraction < 0.6 ? "none" : "translateX(-100%)",
             }}
           >
-            <div className="chart-tooltip-date">{dateLabel(hovered.point.date)}</div>
-            {dataSeries.map((item) => (
-              <div key={item.key} className="chart-tooltip-row">
-                <span className="chart-tooltip-swatch" style={{ background: item.color }} />
-                <span className="chart-tooltip-label">{item.label}</span>
-                <span className="chart-tooltip-value">{currency(hovered.point[item.key])}</span>
-              </div>
-            ))}
-            {hovered.point.model > 0 && (
-              <div className="chart-tooltip-row">
-                <span className="chart-tooltip-swatch" style={{ background: "#b0b0b0" }} />
-                <span className="chart-tooltip-label">Model</span>
-                <span className="chart-tooltip-value">{currency(hovered.point.model)}</span>
-              </div>
+            {anchor ? (() => {
+              // Always measure earliest → latest, regardless of drag direction.
+              const [from, to] =
+                new Date(anchor.point.date).getTime() <= new Date(hovered.point.date).getTime()
+                  ? [anchor.point, hovered.point]
+                  : [hovered.point, anchor.point];
+              return (
+                <>
+                  <div className="chart-tooltip-date">
+                    {dateLabel(from.date)} → {dateLabel(to.date)}
+                  </div>
+                  {dataSeries.map((item) => {
+                    const base = from[item.key];
+                    const delta = to[item.key] - base;
+                    const pct = base !== 0 ? (delta / base) * 100 : undefined;
+                    const deltaStr = `${delta > 0 ? "+" : ""}${currency(delta)}`;
+                    const pctStr = pct !== undefined ? ` (${pct > 0 ? "+" : ""}${pct.toFixed(1)}%)` : "";
+                    return (
+                      <div key={item.key} className="chart-tooltip-row">
+                        <span className="chart-tooltip-swatch" style={{ background: item.color }} />
+                        <span className="chart-tooltip-label">{item.label}</span>
+                        <span
+                          className="chart-tooltip-value"
+                          style={{ color: delta < 0 ? "#c0392b" : delta > 0 ? "#2d8a4e" : undefined }}
+                        >
+                          {deltaStr}{pctStr}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            })() : (
+              <>
+                <div className="chart-tooltip-date">{dateLabel(hovered.point.date)}</div>
+                {dataSeries.map((item) => (
+                  <div key={item.key} className="chart-tooltip-row">
+                    <span className="chart-tooltip-swatch" style={{ background: item.color }} />
+                    <span className="chart-tooltip-label">{item.label}</span>
+                    <span className="chart-tooltip-value">{currency(hovered.point[item.key])}</span>
+                  </div>
+                ))}
+                {hovered.point.model > 0 && (
+                  <div className="chart-tooltip-row">
+                    <span className="chart-tooltip-swatch" style={{ background: "#b0b0b0" }} />
+                    <span className="chart-tooltip-label">Model</span>
+                    <span className="chart-tooltip-value">{currency(hovered.point.model)}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -270,17 +352,20 @@ export function TrendChart({ snapshots }: TrendChartProps) {
         </div>
       </div>
 
-      {fit && (() => {
-        const a = fit.a;
-        const aLabel = a >= 1_000_000 ? `$${(a / 1_000_000).toFixed(2)}M` : a >= 1_000 ? `$${(a / 1_000).toFixed(1)}k` : `$${Math.round(a)}`;
-        return (
-          <p className="chart-equation">
-            y = {aLabel} · e<sup>{(fit.b * 100).toFixed(2)}% · t</sup>,&ensp;CAGR ≈ {(fit.annualRate * 100).toFixed(2)}%&ensp;(t = years from {fit.startYear})
-            <br />
-            R² = {fit.r2.toFixed(4)}
-          </p>
-        );
-      })()}
+      <div className="chart-bottom">
+        {fit && (() => {
+          const a = fit.a;
+          const aLabel = a >= 1_000_000 ? `$${(a / 1_000_000).toFixed(2)}M` : a >= 1_000 ? `$${(a / 1_000).toFixed(1)}k` : `$${Math.round(a)}`;
+          return (
+            <p className="chart-equation">
+              y = {aLabel} · e<sup>{(fit.b * 100).toFixed(2)}% · t</sup>,&ensp;CAGR ≈ {(fit.annualRate * 100).toFixed(2)}%&ensp;(t = years from {fit.startYear})
+              <br />
+              R² = {fit.r2.toFixed(4)}
+            </p>
+          );
+        })()}
+        <ProjectionCalc fit={fit} />
+      </div>
     </section>
   );
 }

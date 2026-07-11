@@ -13,3 +13,10 @@ export function institutionAtYear(accountId: string, institution: string, year: 
   if (!renames) return institution;
   return renames.find((r) => year < r.before)?.institution ?? institution;
 }
+
+// The prior institution name for the transition year only (first year under the
+// current name, right after a rename ended). Used as a small styled note beside
+// the institution — e.g. Robinhood (Paychex) in 2025 — without affecting grouping.
+export function formerInstitutionAtYear(accountId: string, year: number): string | undefined {
+  return RENAMES[accountId]?.find((r) => r.before === year)?.institution;
+}

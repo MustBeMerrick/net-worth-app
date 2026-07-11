@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { PickupNote } from "@/components/PickupNote";
 import { ToastProvider } from "@/components/ToastProvider";
 import "./globals.css";
 
@@ -52,7 +51,6 @@ export default function RootLayout({
           </aside>
           <ToastProvider>
             <main className="main-content">{children}</main>
-            <PickupNote />
           </ToastProvider>
         </div>
       </body>

@@ -357,17 +357,18 @@ export function getExponentialFit(snapshotRows: Snapshot[] = snapshots): Exponen
   return { a, b, annualRate, startYear, t0Ms: t0, r2 };
 }
 
-export function getSnapshotChartPoints(snapshotRows: Snapshot[] = snapshots) {
+// `fitOverride` lets callers supply a fit computed from the full snapshot set so
+// the model stays fixed even when the visible rows are filtered to a range.
+export function getSnapshotChartPoints(snapshotRows: Snapshot[] = snapshots, fitOverride?: ExponentialFit) {
   const sorted = snapshotRows
     .filter((s) => s.notes !== "hidden")
     .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
 
-  const fit = getExponentialFit(snapshotRows);
-  const t0 = fit ? new Date(sorted.find((s) => s.netWorthTotal > 0)!.snapshotDate).getTime() : 0;
+  const fit = fitOverride !== undefined ? fitOverride : getExponentialFit(snapshotRows);
   const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
 
   return sorted.map((snapshot) => {
-    const t = (new Date(snapshot.snapshotDate).getTime() - t0) / msPerYear;
+    const t = fit ? (new Date(snapshot.snapshotDate).getTime() - fit.t0Ms) / msPerYear : 0;
     return {
       date: snapshot.snapshotDate,
       netWorth: snapshot.netWorthTotal,

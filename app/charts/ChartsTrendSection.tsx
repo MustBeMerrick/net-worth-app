@@ -106,7 +106,7 @@ export function ChartsTrendSection({ snapshots }: { snapshots: Snapshot[] }) {
         </div>
       )}
 
-      <TrendChart snapshots={filtered} />
+      <TrendChart snapshots={filtered} allSnapshots={snapshots} />
     </>
   );
 }

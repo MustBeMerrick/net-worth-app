@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { currencyPrecise, getAccountsWithBalances, getAnnualReturnBlocks, percent } from "@/lib/calculations";
 import { getFinanceData } from "@/lib/db-data";
-import { institutionAtYear } from "@/lib/account-renames";
+import { institutionAtYear, formerInstitutionAtYear } from "@/lib/account-renames";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,9 @@ export default async function AnnualReturnsPage() {
   const annualBlocks = getAnnualReturnBlocks(data);
 
   const currentYearContribsByAccount = data.contributions
-    .filter((c) => new Date(c.contributionDate).getFullYear() === CURRENT_YEAR)
+    // Exclude from-growth withdrawals so in-progress invested matches the finalized
+    // year-end blocks and the dashboard (which also drop isFromGrowth).
+    .filter((c) => new Date(c.contributionDate).getFullYear() === CURRENT_YEAR && !c.isFromGrowth)
     .reduce<Record<string, number>>((acc, c) => {
       acc[c.accountId] = (acc[c.accountId] ?? 0) + c.amount;
       return acc;
@@ -361,9 +363,14 @@ export default async function AnnualReturnsPage() {
                     <tbody>
                       {rowGroups.map((group) => (
                         <Fragment key={group.institution}>
-                          {group.rows.map((row) => (
+                          {group.rows.map((row) => {
+                            const former = formerInstitutionAtYear(row.account.id, block.year);
+                            return (
                             <tr key={row.account.id}>
-                              <th scope="row">{institutionAtYear(row.account.id, row.account.institution, block.year)}</th>
+                              <th scope="row">
+                                {institutionAtYear(row.account.id, row.account.institution, block.year)}
+                                {former && <span className="former-note"> ({former})</span>}
+                              </th>
                               <td>{row.account.subaccountName ?? row.account.name}</td>
                               <td className="money-cell">{currencyPrecise(row.investedTotal)}</td>
                               <td className={row.growthPercent !== undefined && row.growthPercent < 0 ? "negative-cell" : "positive-cell"}>
@@ -374,7 +381,8 @@ export default async function AnnualReturnsPage() {
                               </td>
                               <td className="money-cell">{currencyPrecise(row.dec31Balance)}</td>
                             </tr>
-                          ))}
+                            );
+                          })}
                           {group.subtotal && (
                             <tr className="annual-institution-subtotal">
                               <th scope="row">{group.institution}</th>
