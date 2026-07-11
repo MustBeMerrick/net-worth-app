@@ -5,7 +5,6 @@ import "./globals.css";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
-  { href: "/accounts", label: "Account Balances" },
   { href: "/contributions", label: "Contributions" },
   { href: "/annual-returns", label: "Annual Returns" },
   { href: "/charts", label: "Charts" }

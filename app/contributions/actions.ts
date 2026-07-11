@@ -70,7 +70,6 @@ export async function addContribution(formData: FormData) {
   });
 
   revalidatePath("/");
-  revalidatePath("/accounts");
   revalidatePath("/contributions");
   revalidatePath("/annual-returns");
 
@@ -92,7 +91,6 @@ export async function updateContributionKind(contributionId: string, kind: "cont
   });
 
   revalidatePath("/");
-  revalidatePath("/accounts");
   revalidatePath("/contributions");
   revalidatePath("/annual-returns");
 }
@@ -259,7 +257,6 @@ export async function deleteContribution(formData: FormData) {
   });
 
   revalidatePath("/");
-  revalidatePath("/accounts");
   revalidatePath("/contributions");
   revalidatePath("/annual-returns");
   redirect("/contributions");
@@ -271,7 +268,6 @@ export async function deleteContributionById(contributionId: string) {
   });
 
   revalidatePath("/");
-  revalidatePath("/accounts");
   revalidatePath("/contributions");
   revalidatePath("/annual-returns");
 }

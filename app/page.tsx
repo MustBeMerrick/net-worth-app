@@ -1,7 +1,10 @@
 import { Fragment } from "react";
+import { saveBalances } from "@/app/actions";
 import { ActionButton } from "@/components/ActionButton";
 import { AllocationChart } from "@/components/AllocationChart";
+import { BalanceHistoryProvider, BalanceInput } from "@/components/BalanceInputs";
 import { MetricCard } from "@/components/MetricCard";
+import { SnapshotForm } from "@/components/SnapshotForm";
 import { TrendChart } from "@/components/TrendChart";
 import {
   currency,
@@ -25,6 +28,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="page-stack">
+      {/* Empty form the Balance inputs + Save button associate with via `form=`. */}
+      <form id="balances-form" action={saveBalances} />
       <header className="page-header">
         <div>
           <p>Dashboard</p>
@@ -37,6 +42,10 @@ export default async function DashboardPage() {
               <small className="action-subtext">synced: {dateTimeLabel(summary.lastPlaidSync)}</small>
             ) : null}
           </div>
+          <button className="action-button action-button-primary" type="submit" form="balances-form">
+            Save Balances
+          </button>
+          <SnapshotForm />
           <ActionButton>Export Backup</ActionButton>
         </div>
       </header>
@@ -60,6 +69,7 @@ export default async function DashboardPage() {
         />
       </section>
 
+      <BalanceHistoryProvider>
       <div className="two-column">
         <section className="panel class-panel">
           <div className="section-heading">
@@ -84,7 +94,12 @@ export default async function DashboardPage() {
                       <tr key={account.id}>
                         <td><strong>{index === 0 ? group.institution : ""}</strong></td>
                         <td>{account.subaccountName ?? account.name}</td>
-                        <td>{currencyPrecise(account.latestBalance)}</td>
+                        <td>
+                          <BalanceInput
+                            accountId={account.id}
+                            defaultValue={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(account.latestBalance)}
+                          />
+                        </td>
                       </tr>
                     ))}
                     {group.hasMultipleAccounts ? (
@@ -129,7 +144,12 @@ export default async function DashboardPage() {
                       <tr key={account.id}>
                         <td><strong>{index === 0 ? group.institution : ""}</strong></td>
                         <td>{account.subaccountName ?? account.name}</td>
-                        <td>{currencyPrecise(account.latestBalance)}</td>
+                        <td>
+                          <BalanceInput
+                            accountId={account.id}
+                            defaultValue={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(account.latestBalance)}
+                          />
+                        </td>
                       </tr>
                     ))}
                     {group.hasMultipleAccounts ? (
@@ -153,6 +173,7 @@ export default async function DashboardPage() {
 
         <AllocationChart accounts={accountRows} />
       </div>
+      </BalanceHistoryProvider>
 
       <TrendChart snapshots={data.snapshots} />
     </div>

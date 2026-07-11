@@ -7,7 +7,7 @@ export function SnapshotForm() {
   const [isYearEnd, setIsYearEnd] = useState(false);
 
   return (
-    <form style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.375rem", position: "relative" }} action={takeSnapshotCombined}>
+    <form style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.375rem" }} action={takeSnapshotCombined}>
       <button className="action-button action-button-primary" type="submit">
         Take Snapshot
       </button>
@@ -28,7 +28,7 @@ export function SnapshotForm() {
           max="2100"
           placeholder={String(new Date().getFullYear() - 1)}
           required
-          style={{ width: "5rem", position: "absolute", top: "100%", right: 0, marginTop: "0.25rem" }}
+          style={{ width: "5rem" }}
         />
       )}
     </form>

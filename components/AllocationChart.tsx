@@ -36,9 +36,16 @@ function piePath(startDeg: number, endDeg: number, r: number): string {
   return `M 0 0 L ${x1.toFixed(4)} ${y1.toFixed(4)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(4)} ${y2.toFixed(4)} Z`;
 }
 
-const R = 108;
-const LABEL_R = 72;
-const MIN_PCT_FOR_LABEL = 0.04;
+function pctLabel(p: number): string {
+  const r = Math.round(p * 100);
+  return r === 0 && p > 0 ? "<1%" : `${r}%`;
+}
+
+const R = 106;
+const LABEL_R = 66; // radius for the in-slice label
+const LEADER_R = R + 8; // elbow radius for the leader line
+const OUT_X = 134; // horizontal position of outside labels
+const MIN_PCT_FOR_LABEL = 0.04; // below this, label goes outside with a leader
 
 export function AllocationChart({ accounts }: AllocationChartProps) {
   const total = accounts.reduce((sum, a) => sum + a.latestBalance, 0);
@@ -52,8 +59,11 @@ export function AllocationChart({ accounts }: AllocationChartProps) {
     const end = cursor + sweep;
     cursor = end;
     const mid = start + sweep / 2;
-    const [lx, ly] = polar(mid, LABEL_R);
-    return { ...slice, pct, start, end, lx, ly };
+    const [lx, ly] = polar(mid, LABEL_R); // inside label
+    const [ex, ey] = polar(mid, R); // slice edge
+    const [mx, my] = polar(mid, LEADER_R); // leader elbow
+    const side = mx >= 0 ? 1 : -1;
+    return { ...slice, pct, start, end, lx, ly, ex, ey, mx, my, side, labelX: side * OUT_X };
   });
 
   return (
@@ -66,15 +76,40 @@ export function AllocationChart({ accounts }: AllocationChartProps) {
       </div>
       <div className="allocation-layout">
         <svg
-          viewBox="-120 -120 240 240"
-          width="240"
-          height="240"
+          viewBox="-160 -128 320 256"
           aria-label="Account allocation pie chart"
-          style={{ display: "block", margin: "0 auto" }}
+          style={{ display: "block", width: "100%", maxWidth: 320, height: "auto", margin: "0 auto" }}
         >
           {sliceData.map((slice) => (
             <path key={slice.institution} d={piePath(slice.start, slice.end, R)} fill={slice.color} />
           ))}
+
+          {/* Small slices: leader line + percent outside the pie */}
+          {sliceData.map((slice) =>
+            slice.pct > 0 && slice.pct < MIN_PCT_FOR_LABEL ? (
+              <g key={`lead-${slice.institution}`}>
+                <polyline
+                  points={`${slice.ex.toFixed(1)},${slice.ey.toFixed(1)} ${slice.mx.toFixed(1)},${slice.my.toFixed(1)} ${slice.labelX},${slice.my.toFixed(1)}`}
+                  fill="none"
+                  stroke={slice.color}
+                  strokeWidth="1"
+                />
+                <text
+                  x={slice.labelX + slice.side * 4}
+                  y={slice.my.toFixed(1)}
+                  textAnchor={slice.side > 0 ? "start" : "end"}
+                  dominantBaseline="middle"
+                  fontSize="11"
+                  fontWeight="700"
+                  fill="#18221e"
+                >
+                  {pctLabel(slice.pct)}
+                </text>
+              </g>
+            ) : null
+          )}
+
+          {/* Larger slices: percent centered inside */}
           {sliceData.map((slice) =>
             slice.pct >= MIN_PCT_FOR_LABEL ? (
               <text
@@ -88,7 +123,7 @@ export function AllocationChart({ accounts }: AllocationChartProps) {
                 fill="#fff"
                 style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.35)", strokeWidth: 3 }}
               >
-                {Math.round(slice.pct * 100)}%
+                {pctLabel(slice.pct)}
               </text>
             ) : null
           )}

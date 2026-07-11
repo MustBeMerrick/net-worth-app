@@ -78,10 +78,9 @@ export async function takeSnapshot() {
   });
 
   revalidatePath("/");
-  revalidatePath("/accounts");
   revalidatePath("/annual-returns");
   revalidatePath("/charts");
-  redirect("/accounts");
+  redirect("/");
 }
 
 export async function takeYearEndSnapshot(formData: FormData) {
@@ -93,7 +92,10 @@ export async function takeYearEndSnapshot(formData: FormData) {
     prisma.balanceFetch.findMany({ orderBy: { fetchedAt: "desc" } }),
     prisma.contribution.groupBy({
       by: ["accountId"],
-      where: { yearBucket: { lte: year }, isFromGrowth: false },
+      where: {
+        isFromGrowth: false,
+        OR: [{ yearBucket: null }, { yearBucket: { lte: year } }]
+      },
       _sum: { amountCents: true }
     })
   ]);
@@ -140,7 +142,9 @@ export async function takeYearEndSnapshot(formData: FormData) {
             accountId: account.id,
             balanceCents,
             investedCents,
-            growthCents: balanceCents - investedCents
+            // growthCents intentionally null: getAnnualReturnBlocks computes
+            // per-year growth as dec31Balance - yearlyInvested - prevDec31Balance.
+            // Storing a cumulative value here would override that formula.
           };
         })
       }
@@ -148,10 +152,9 @@ export async function takeYearEndSnapshot(formData: FormData) {
   });
 
   revalidatePath("/");
-  revalidatePath("/accounts");
   revalidatePath("/annual-returns");
   revalidatePath("/charts");
-  redirect("/accounts");
+  redirect("/");
 }
 
 export async function deleteSnapshot(id: string) {

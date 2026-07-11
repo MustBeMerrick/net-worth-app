@@ -12,6 +12,8 @@ function parseCents(value: string): bigint | null {
   return BigInt(dollars) * BigInt(100) + BigInt(cents.padEnd(2, "0"));
 }
 
+// Records a new manual BalanceFetch for each changed account. Balance inputs
+// live on the dashboard Liquid/Non-Liquid tables (form association via `form=`).
 export async function saveBalances(formData: FormData) {
   const accounts = await prisma.account.findMany({ where: { isActive: true } });
 
@@ -51,6 +53,35 @@ export async function saveBalances(formData: FormData) {
   }
 
   revalidatePath("/");
-  revalidatePath("/accounts");
-  redirect("/accounts");
+  revalidatePath("/annual-returns");
+  redirect("/");
+}
+
+// Saves a single account balance on blur — used by auto-save in BalanceInputs.
+// No redirect; returns silently so the client can stay on the page.
+export async function saveSingleBalance(accountId: string, value: string) {
+  const cents = parseCents(value);
+  if (cents === null) return;
+
+  const latest = await prisma.balanceFetch.findFirst({
+    where: { accountId },
+    orderBy: { fetchedAt: "desc" },
+    select: { balanceCents: true }
+  });
+
+  if (latest?.balanceCents === cents) return; // unchanged
+
+  await prisma.balanceFetch.create({
+    data: {
+      id: `bf-manual-${accountId}-${randomUUID()}`,
+      accountId,
+      balanceCents: cents,
+      currency: "USD",
+      source: "manual",
+      fetchedAt: new Date()
+    }
+  });
+
+  revalidatePath("/");
+  revalidatePath("/annual-returns");
 }
