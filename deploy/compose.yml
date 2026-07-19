@@ -9,6 +9,8 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     image: net-worth-app
+    # run as marc (uid 1000), not root: files created on the data mount stay owned by marc
+    user: "1000:1000"
     restart: unless-stopped
     ports:
       - "${NW_PORT:-3000}:3000"
@@ -31,6 +33,7 @@ services:
   # profiles: keeps it from starting with `up -d`
   migrate:
     profiles: ["tools"]
+    user: "1000:1000"
     build:
       context: ..
       dockerfile: deploy/Dockerfile
