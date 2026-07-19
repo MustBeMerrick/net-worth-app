@@ -6,6 +6,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   agentRules: false,
+  output: "standalone",
   turbopack: {
     root
   }

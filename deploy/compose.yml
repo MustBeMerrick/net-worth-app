@@ -1,0 +1,42 @@
+# Run from the server: ~/apps/net-worth-app/src/deploy/compose.yml
+# Paths below are relative to this file: ../../data and ../../env live
+# alongside src/ in ~/apps/net-worth-app/, outside the deployed tree.
+name: net-worth
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: net-worth-app
+    restart: unless-stopped
+    ports:
+      - "${NW_PORT:-3000}:3000"
+    environment:
+      # pinned here, not in the env file: the app must only ever see the mounted DB
+      DATABASE_URL: "file:/app/data/net-worth.sqlite?connection_limit=1"
+    env_file:
+      - ../../env
+    volumes:
+      - ../../data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:3000/manifest.webmanifest"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # one-off schema sync, run by deploy.sh before each `up`:
+  #   docker compose -f deploy/compose.yml run --rm migrate
+  # profiles: keeps it from starting with `up -d`
+  migrate:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: builder
+    environment:
+      DATABASE_URL: "file:/app/data/net-worth.sqlite?connection_limit=1"
+    volumes:
+      - ../../data:/app/data
+    command: npx prisma db push --skip-generate

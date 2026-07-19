@@ -1,0 +1,15 @@
+.git
+node_modules
+.next
+data
+docs
+prisma/dev.db
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.*
+tsconfig.tsbuildinfo
+.codex-sessions
+*.log
+.DS_Store
