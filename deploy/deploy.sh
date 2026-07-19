@@ -37,7 +37,8 @@ cmd_deploy() {
   fi
   local tmp
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
+  # expand $tmp now: it's a local and would be gone when the EXIT trap fires
+  trap "rm -rf '$tmp'" EXIT
   git archive HEAD | tar -x -C "$tmp"
   rsync -az --delete "$tmp"/ "$HOST:$SRC/"
   ssh "$HOST" "set -e; cd ~/$SRC; $COMPOSE build app; $COMPOSE run --rm migrate; $COMPOSE up -d app"
