@@ -1176,6 +1176,10 @@ tr.row-leaving {
   outline-offset: 1px;
 }
 
+.contributions-table {
+  table-layout: fixed;
+}
+
 .table-action-cell {
   width: 1%;
   white-space: nowrap;

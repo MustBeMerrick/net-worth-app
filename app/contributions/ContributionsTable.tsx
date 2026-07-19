@@ -64,12 +64,15 @@ export function ContributionsTable({ rows, accountById }: Props) {
     scheduleDelete(id, label, () => deleteContributionById(id));
   }
 
+  const isFromGrowthOf = (r: Contribution) => fromGrowthOverrides[r.id] ?? r.isFromGrowth ?? false;
+
   const visibleRows = rows.filter((r) => {
     if (r.id === pendingId && r.id !== rowLeavingId) return false;
     if (filterAccountId !== "all" && r.accountId !== filterAccountId) return false;
     if (filterYear !== "all" && new Date(r.contributionDate).getFullYear() !== Number(filterYear)) return false;
     if (filterKind === "contribution" && r.amount <= 0) return false;
     if (filterKind === "withdrawal" && r.amount >= 0) return false;
+    if (filterKind === "net_deposits" && r.amount < 0 && isFromGrowthOf(r)) return false;
     return true;
   });
 
@@ -81,7 +84,6 @@ export function ContributionsTable({ rows, accountById }: Props) {
 
   // Withdrawal rows currently shown — the only ones with a "from growth" box.
   const withdrawalRows = visibleRows.filter((r) => r.amount < 0 && r.id !== rowLeavingId && r.id !== pendingId);
-  const isFromGrowthOf = (r: Contribution) => fromGrowthOverrides[r.id] ?? r.isFromGrowth ?? false;
   const allFromGrowth = withdrawalRows.length > 0 && withdrawalRows.every(isFromGrowthOf);
 
   function handleToggleAll(next: boolean) {
@@ -132,6 +134,7 @@ export function ContributionsTable({ rows, accountById }: Props) {
           <option value="all">All types</option>
           <option value="contribution">Deposits</option>
           <option value="withdrawal">Withdrawals</option>
+          <option value="net_deposits">Net Deposits</option>
         </select>
 
         {isFiltered && (
@@ -149,7 +152,14 @@ export function ContributionsTable({ rows, accountById }: Props) {
       </div>
 
       <div className="table-wrap">
-        <table>
+        <table className="contributions-table">
+          <colgroup>
+            <col style={{ width: "130px" }} />
+            <col style={{ width: "220px" }} />
+            <col style={{ width: "260px" }} />
+            <col />
+            <col style={{ width: "90px" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Date</th>

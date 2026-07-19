@@ -51,7 +51,6 @@ type HoveredPoint = {
   point: ReturnType<typeof getSnapshotChartPoints>[0];
   svgX: number;
   svgY: number; // cursor Y in viewBox units, clamped to the plot area
-  cssXFraction: number; // 0–1 across chart width, for tooltip flip logic
 };
 
 export function TrendChart({ snapshots, allSnapshots }: TrendChartProps) {
@@ -128,9 +127,8 @@ export function TrendChart({ snapshots, allSnapshots }: TrendChartProps) {
     }
     const pointMs = new Date(nearest.date).getTime();
     const svgX = cxMs(pointMs, minMs, maxMs);
-    const cssXFraction = (svgX - ML) / CW;
     const svgY = Math.max(MT, Math.min(MT + CH, local.y));
-    return { point: nearest, svgX, svgY, cssXFraction };
+    return { point: nearest, svgX, svgY };
   }
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
@@ -154,22 +152,15 @@ export function TrendChart({ snapshots, allSnapshots }: TrendChartProps) {
     setAnchor(null);
   }
 
-  // Anchor the tooltip beside the data dot vertically closest to the cursor,
-  // expanding into whichever side (down/up) has more room so it stays in bounds.
-  let tooltipVStyle: CSSProperties = { top: 12 };
-  if (hovered) {
-    let anchorY = cy(hovered.point[dataSeries[0].key], min, max);
-    let best = Infinity;
-    for (const item of dataSeries) {
-      const y = cy(hovered.point[item.key], min, max);
-      const dist = Math.abs(y - hovered.svgY);
-      if (dist < best) { best = dist; anchorY = y; }
-    }
-    const expandUp = anchorY > MT + CH / 2;
-    tooltipVStyle = expandUp
-      ? { top: "auto", bottom: `calc(${((SH - anchorY) / SH) * 100}% + 8px)` }
-      : { top: `calc(${(anchorY / SH) * 100}% + 8px)` };
-  }
+  // Tooltip always above-left of cursor so the cursor sits at its bottom-right corner.
+  const tooltipStyle: CSSProperties = hovered
+    ? {
+        right: `calc(${((SW - hovered.svgX) / SW) * 100}% + 8px)`,
+        bottom: `calc(${((SH - hovered.svgY) / SH) * 100}% + 8px)`,
+        left: "auto",
+        top: "auto",
+      }
+    : {};
 
   return (
     <section className="panel chart-panel">
@@ -276,11 +267,7 @@ export function TrendChart({ snapshots, allSnapshots }: TrendChartProps) {
         {hovered && (
           <div
             className="chart-tooltip"
-            style={{
-              ...tooltipVStyle,
-              left: `calc(${hovered.cssXFraction * 100}% + ${(hovered.cssXFraction < 0.6 ? 12 : -12)}px)`,
-              transform: hovered.cssXFraction < 0.6 ? "none" : "translateX(-100%)",
-            }}
+            style={tooltipStyle}
           >
             {anchor ? (() => {
               // Always measure earliest → latest, regardless of drag direction.
