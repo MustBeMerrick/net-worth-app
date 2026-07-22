@@ -23,8 +23,10 @@ ENV NODE_ENV=production
 # Docker sets HOSTNAME to the container id; server.js would bind to that and be unreachable
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-# Prisma's query engine links against openssl
-RUN apk add --no-cache openssl
+# Prisma's query engine links against openssl; tzdata gives Node the named zone below
+# (container clocks default to UTC, which drifted snapshot date labels by a day in the evening PDT)
+RUN apk add --no-cache openssl tzdata
+ENV TZ=America/Los_Angeles
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
