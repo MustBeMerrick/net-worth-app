@@ -69,6 +69,22 @@ a {
   background: #19231f;
 }
 
+.sidebar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58%;
+  max-height: 440px;
+  z-index: -1;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: bottom left;
+  background-size: contain;
+  background-image: url("/sidebar-tree.png");
+}
+
 .brand {
   display: grid;
   grid-template-columns: 44px 1fr;
@@ -1348,6 +1364,10 @@ tr.row-leaving {
     position: static;
     height: auto;
     padding: 16px;
+  }
+
+  .sidebar::after {
+    display: none;
   }
 
   .nav-list {
