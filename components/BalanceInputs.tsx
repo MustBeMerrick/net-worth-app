@@ -96,13 +96,13 @@ export function BalanceInput({ accountId, defaultValue }: { accountId: string; d
     autoComplete: "off",
   };
 
-  if (!ctx) return <input {...base} defaultValue={defaultValue} />;
+  if (!ctx) return <input {...base} defaultValue={defaultValue} onFocus={(e) => e.currentTarget.select()} />;
 
   return (
     <input
       {...base}
       value={value}
-      onFocus={(e) => { focusVal.current = e.currentTarget.value; }}
+      onFocus={(e) => { focusVal.current = e.currentTarget.value; e.currentTarget.select(); }}
       onChange={(e) => ctx.change(accountId, e.target.value, defaultValue)}
       onBlur={(e) => {
         const formatted = formatBalance(e.currentTarget.value);
