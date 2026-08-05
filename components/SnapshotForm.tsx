@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { takeSnapshotCombined } from "@/app/snapshots/actions";
+import { SnapshotButton } from "@/components/SnapshotButton";
 
 export function SnapshotForm() {
   const [isYearEnd, setIsYearEnd] = useState(false);
 
   return (
     <form className="snapshot-form" action={takeSnapshotCombined}>
-      <button className="action-button action-button-primary" type="submit">
-        Take Snapshot
-      </button>
+      <SnapshotButton>Take Snapshot</SnapshotButton>
       <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.875rem", cursor: "pointer", whiteSpace: "nowrap" }}>
         <input
           type="checkbox"

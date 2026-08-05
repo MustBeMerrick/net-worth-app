@@ -1,4 +1,4 @@
-import { ActionButton } from "@/components/ActionButton";
+import { SnapshotButton } from "@/components/SnapshotButton";
 import { takeSnapshot, takeYearEndSnapshot } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export default async function SnapshotsPage() {
         </div>
         <div className="action-row">
           <form action={takeSnapshot}>
-            <ActionButton tone="primary" type="submit">Take Snapshot</ActionButton>
+            <SnapshotButton>Take Snapshot</SnapshotButton>
           </form>
           </div>
       </header>
@@ -31,9 +31,7 @@ export default async function SnapshotsPage() {
             <input name="year" type="number" min="2000" max="2100" placeholder={String(new Date().getFullYear() - 1)} required />
           </label>
           <div className="form-actions">
-            <button className="action-button action-button-primary" type="submit">
-              Save Year-End Snapshot
-            </button>
+            <SnapshotButton>Save Year-End Snapshot</SnapshotButton>
           </div>
         </form>
       </section>
