@@ -1,13 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type SnapshotButtonProps = {
   children: React.ReactNode;
   tone?: "primary" | "secondary";
+  /** Navigate here once the camera animation finishes. */
+  redirectTo?: string;
 };
 
-export function SnapshotButton({ children, tone = "primary" }: SnapshotButtonProps) {
+export function SnapshotButton({ children, tone = "primary", redirectTo }: SnapshotButtonProps) {
+  const router = useRouter();
   const [snapping, setSnapping] = useState(false);
 
   return (
@@ -21,9 +25,13 @@ export function SnapshotButton({ children, tone = "primary" }: SnapshotButtonPro
           e.preventDefault();
           // Submit first so the snapshot is saved right away; the camera is purely cosmetic.
           // requestSubmit runs before setSnapping disables the button, so it still submits.
+          // The action doesn't redirect: a server-side redirect remounts the page and cuts the animation.
           e.currentTarget.form?.requestSubmit();
           setSnapping(true);
-          setTimeout(() => setSnapping(false), 2000);
+          setTimeout(() => {
+            setSnapping(false);
+            if (redirectTo) router.push(redirectTo);
+          }, 2000);
         }}
       >
         {children}

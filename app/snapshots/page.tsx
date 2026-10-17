@@ -13,7 +13,7 @@ export default async function SnapshotsPage() {
         </div>
         <div className="action-row">
           <form action={takeSnapshot}>
-            <SnapshotButton>Take Snapshot</SnapshotButton>
+            <SnapshotButton redirectTo="/">Take Snapshot</SnapshotButton>
           </form>
           </div>
       </header>
@@ -31,7 +31,7 @@ export default async function SnapshotsPage() {
             <input name="year" type="number" min="2000" max="2100" placeholder={String(new Date().getFullYear() - 1)} required />
           </label>
           <div className="form-actions">
-            <SnapshotButton>Save Year-End Snapshot</SnapshotButton>
+            <SnapshotButton redirectTo="/">Save Year-End Snapshot</SnapshotButton>
           </div>
         </form>
       </section>

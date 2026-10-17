@@ -2,7 +2,6 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
 export async function takeSnapshotCombined(formData: FormData) {
@@ -80,7 +79,7 @@ export async function takeSnapshot() {
   revalidatePath("/");
   revalidatePath("/annual-returns");
   revalidatePath("/charts");
-  redirect("/");
+  revalidatePath("/snapshots");
 }
 
 export async function takeYearEndSnapshot(formData: FormData) {
@@ -154,7 +153,7 @@ export async function takeYearEndSnapshot(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/annual-returns");
   revalidatePath("/charts");
-  redirect("/");
+  revalidatePath("/snapshots");
 }
 
 export async function deleteSnapshot(id: string) {
