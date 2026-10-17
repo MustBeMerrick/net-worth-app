@@ -19,12 +19,11 @@ export function SnapshotButton({ children, tone = "primary" }: SnapshotButtonPro
         onClick={(e) => {
           if (snapping) return;
           e.preventDefault();
-          const form = e.currentTarget.form;
+          // Submit first so the snapshot is saved right away; the camera is purely cosmetic.
+          // requestSubmit runs before setSnapping disables the button, so it still submits.
+          e.currentTarget.form?.requestSubmit();
           setSnapping(true);
-          setTimeout(() => {
-            setSnapping(false);
-            form?.requestSubmit();
-          }, 2000);
+          setTimeout(() => setSnapping(false), 2000);
         }}
       >
         {children}
